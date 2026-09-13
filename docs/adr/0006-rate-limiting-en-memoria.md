@@ -1,4 +1,4 @@
-# ADR 0003: Rate Limiting en memoria con ventana deslizante frente a Redis
+﻿# ADR 0006: Rate Limiting en memoria con ventana deslizante frente a Redis
 
 ## Estado
 Aceptado
