@@ -1,0 +1,78 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>Mis Órdenes</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="logout()" title="Cerrar sesión">
+        <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding-bottom">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar..." refreshingSpinner="crescent">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  @if (loading() && orders().length === 0) {
+    <div class="center-container">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p class="loading-text">Cargando órdenes asignadas...</p>
+    </div>
+  } @else if (errorMessage() && orders().length === 0) {
+    <div class="center-container">
+      <p class="error-text">{{ errorMessage() }}</p>
+      <ion-button fill="outline" (click)="loadOrders(0, false)">
+        <ion-icon slot="start" name="refresh-outline"></ion-icon>
+        Reintentar
+      </ion-button>
+    </div>
+  } @else if (orders().length === 0) {
+    <div class="center-container">
+      <p class="empty-title">Sin órdenes asignadas</p>
+      <p class="empty-subtitle">No tienes servicios pendientes en este momento.</p>
+    </div>
+  } @else {
+    <ion-list class="orders-list">
+      @for (order of orders(); track order.id) {
+        <ion-item button (click)="goToDetail(order.id)" detail="false" class="order-item">
+          <div class="order-card-content">
+            <div class="order-header-row">
+              <span class="order-code">{{ order.code }}</span>
+              <div class="badges-row">
+                <ion-badge [color]="getPriorityColor(order.priority)" class="priority-badge">
+                  {{ order.priority }}
+                </ion-badge>
+                <ion-badge [color]="getStatusColor(order.status)" class="status-badge">
+                  {{ order.status }}
+                </ion-badge>
+              </div>
+            </div>
+
+            <h3 class="order-title">{{ order.title }}</h3>
+
+            <div class="order-details-row">
+              <div class="detail-item">
+                <ion-icon name="business-outline"></ion-icon>
+                <span>{{ order.clientName }}</span>
+              </div>
+              @if (order.scheduledAt) {
+                <div class="detail-item">
+                  <ion-icon name="calendar-outline"></ion-icon>
+                  <span>{{ order.scheduledAt | date:'short' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+          <ion-icon slot="end" name="chevron-forward-outline" class="chevron-icon"></ion-icon>
+        </ion-item>
+      }
+    </ion-list>
+
+    <ion-infinite-scroll (ionInfinite)="onInfiniteScroll($event)" [disabled]="isLastPage()">
+      <ion-infinite-scroll-content loadingSpinner="crescent" loadingText="Cargando más órdenes...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+  }
+</ion-content>

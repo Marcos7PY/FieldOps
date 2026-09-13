@@ -8,13 +8,18 @@ export const routes: Routes = [
     canActivate: [guestGuard],
   },
   {
-    path: 'home',
-    loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
+    path: 'orders',
+    loadComponent: () => import('./features/orders/orders-list/orders-list.page').then((m) => m.OrdersListPage),
     canActivate: [authGuard],
   },
   {
+    path: 'home',
+    redirectTo: 'orders',
+    pathMatch: 'full',
+  },
+  {
     path: '',
-    redirectTo: 'home',
+    redirectTo: 'orders',
     pathMatch: 'full',
   },
 ];
