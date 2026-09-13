@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:fieldops_auth;DB_CLOSE_DELAY=-1;MODE=MSSQLServer
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+jwt:
+  key-path: target/test-keys
+  access-token-expiration-seconds: 900
+  refresh-token-expiration-days: 7

@@ -11,6 +11,7 @@
 
     <modules>
         <module>orders-service</module>
+        <module>auth-service</module>
     </modules>
 
     <properties>
