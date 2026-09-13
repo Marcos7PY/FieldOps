@@ -266,4 +266,43 @@ class WorkOrderServiceTest {
                 .isInstanceOf(BusinessRuleViolationException.class)
                 .hasMessageContaining("supervisors");
     }
+    @Test
+    void findWorkOrdersAsTechnicianRestrictsToCurrentUserId() {
+        WorkOrder order = createSampleOrder(10L, OrderStatus.ASSIGNED, 42L, 0L);
+        org.springframework.data.domain.Page<WorkOrder> page = new org.springframework.data.domain.PageImpl<>(
+                java.util.List.of(order),
+                org.springframework.data.domain.PageRequest.of(0, 20),
+                1
+        );
+
+        when(workOrderRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+
+        com.fieldops.orders.application.dto.PageResponse<com.fieldops.orders.application.dto.WorkOrderSummaryResponse> result =
+                service.findWorkOrders(null, 999L, null, null, null, null,
+                        org.springframework.data.domain.PageRequest.of(0, 20), 42L, false);
+
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content().getFirst().assignedTechnicianId()).isEqualTo(42L);
+    }
+
+    @Test
+    void getWorkOrderByIdAsTechnicianForDifferentOrderThrowsAccessDenied() {
+        WorkOrder order = createSampleOrder(11L, OrderStatus.ASSIGNED, 42L, 0L);
+        when(workOrderRepository.findById(11L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service.getWorkOrderById(11L, 999L, false))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void getWorkOrderByIdAsSupervisorReturnsOrder() {
+        WorkOrder order = createSampleOrder(12L, OrderStatus.DRAFT, null, 0L);
+        when(workOrderRepository.findById(12L)).thenReturn(Optional.of(order));
+
+        WorkOrderResponse response = service.getWorkOrderById(12L, 1L, true);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(12L);
+    }
 }

@@ -4,6 +4,8 @@ import com.fieldops.orders.application.dto.AssignWorkOrderRequest;
 import com.fieldops.orders.application.dto.ChangeStatusRequest;
 import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
+import com.fieldops.orders.application.dto.WorkOrderSummaryResponse;
+import com.fieldops.orders.application.dto.PageResponse;
 import com.fieldops.orders.domain.exception.BusinessRuleViolationException;
 import com.fieldops.orders.domain.exception.InvalidStatusTransitionException;
 import com.fieldops.orders.domain.exception.ResourceNotFoundException;
@@ -186,6 +188,50 @@ public class WorkOrderService {
         historyRepository.save(history);
         order.getStatusHistory().add(history);
 
+        return mapper.toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<WorkOrderSummaryResponse> findWorkOrders(
+            OrderStatus status,
+            Long technicianId,
+            Long clientId,
+            LocalDateTime from,
+            LocalDateTime to,
+            String search,
+            org.springframework.data.domain.Pageable pageable,
+            Long currentUserId,
+            boolean isSupervisor
+    ) {
+        Long effectiveTechnicianId = isSupervisor ? technicianId : currentUserId;
+
+        org.springframework.data.jpa.domain.Specification<WorkOrder> spec =
+                com.fieldops.orders.infrastructure.persistence.WorkOrderPredicates.withFilters(
+                        status, effectiveTechnicianId, clientId, from, to, search
+                );
+
+        org.springframework.data.domain.Page<WorkOrder> page = workOrderRepository.findAll(spec, pageable);
+        java.util.List<com.fieldops.orders.application.dto.WorkOrderSummaryResponse> content =
+                page.getContent().stream().map(mapper::toSummaryResponse).toList();
+
+        return new com.fieldops.orders.application.dto.PageResponse<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isLast()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public WorkOrderResponse getWorkOrderById(Long id, Long currentUserId, boolean isSupervisor) {
+        WorkOrder order = findOrderById(id);
+        if (!isSupervisor) {
+            if (order.getAssignedTechnicianId() == null || !order.getAssignedTechnicianId().equals(currentUserId)) {
+                throw new AccessDeniedException("Technician can only view orders assigned to them");
+            }
+        }
         return mapper.toResponse(order);
     }
 
