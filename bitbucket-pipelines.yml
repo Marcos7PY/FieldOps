@@ -21,6 +21,13 @@ definitions:
         artifacts:
           - "**/target/surefire-reports/**"
           - "**/target/site/jacoco/**"
+    - step: &sonar-analysis
+        name: SonarQube quality analysis
+        caches:
+          - maven
+        script:
+          - cd backend
+          - mvn -B sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN
     - step: &frontend-build
         name: Frontend build and test
         image: node:20
@@ -39,3 +46,4 @@ pipelines:
       - parallel:
           - step: *backend-build
           - step: *frontend-build
+      - step: *sonar-analysis
