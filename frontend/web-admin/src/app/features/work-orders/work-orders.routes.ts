@@ -5,4 +5,8 @@ export const WORK_ORDERS_ROUTES: Routes = [
     path: '',
     loadComponent: () => import('./work-orders-list/work-orders-list.component').then(m => m.WorkOrdersListComponent),
   },
+  {
+    path: 'new',
+    loadComponent: () => import('./work-order-create/work-order-create.component').then(m => m.WorkOrderCreateComponent),
+  },
 ];
