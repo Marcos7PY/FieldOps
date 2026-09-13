@@ -1,8 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, of, tap, throwError } from 'rxjs';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RefreshTokenRequest, User } from '../models';
+import { IS_REFRESH_REQUEST } from '../interceptors/auth.interceptor';
 
 @Injectable({
   providedIn: 'root'
@@ -44,7 +45,13 @@ export class AuthService {
     );
   }
 
+  private refreshInProgress$: Observable<AuthResponse> | null = null;
+
   refreshToken(): Observable<AuthResponse> {
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
+
     const refresh = this.getRefreshToken();
     if (!refresh) {
       this.clearSession();
@@ -52,13 +59,25 @@ export class AuthService {
     }
 
     const payload: RefreshTokenRequest = { refreshToken: refresh };
-    return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload).pipe(
+    const context = new HttpContext().set(IS_REFRESH_REQUEST, true);
+
+    this.refreshInProgress$ = this.http.post<AuthResponse>(
+      `${environment.apiBaseUrl}/auth/refresh`,
+      payload,
+      { context }
+    ).pipe(
       tap(response => this.setSession(response)),
       catchError(error => {
         this.clearSession();
         return throwError(() => error);
-      })
+      }),
+      finalize(() => {
+        this.refreshInProgress$ = null;
+      }),
+      shareReplay(1)
     );
+
+    return this.refreshInProgress$;
   }
 
   logout(): Observable<void> {
