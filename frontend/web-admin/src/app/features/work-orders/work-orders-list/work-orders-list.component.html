@@ -1,0 +1,126 @@
+<div class="work-orders-page">
+  <div class="page-header">
+    <div class="title-group">
+      <h1 class="page-title">Órdenes de Trabajo</h1>
+      <span class="total-badge">{{ totalElements() }} órdenes en total</span>
+    </div>
+
+    @if (authService.hasRole('ROLE_SUPERVISOR') || authService.hasRole('ROLE_ADMIN')) {
+      <a mat-raised-button color="primary" routerLink="/work-orders/new" class="create-btn">
+        <mat-icon>add</mat-icon>
+        <span>Nueva Orden</span>
+      </a>
+    }
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar por código o título</mat-label>
+        <input matInput [formControl]="searchControl" placeholder="Ej. OT-2026 o Mantenimiento">
+        <mat-icon matPrefix>search</mat-icon>
+        @if (searchControl.value) {
+          <button mat-icon-button matSuffix (click)="searchControl.setValue('')" aria-label="Limpiar búsqueda">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="status-field">
+        <mat-label>Estado</mat-label>
+        <mat-select [formControl]="statusControl">
+          @for (option of statusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (searchControl.value || statusControl.value) {
+        <button mat-button color="warn" (click)="clearFilters()" class="clear-filters-btn">
+          <mat-icon>filter_alt_off</mat-icon>
+          <span>Limpiar filtros</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="table-card">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    }
+
+    <div class="table-container">
+      <table mat-table [dataSource]="orders()" class="orders-table">
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let row" class="code-cell">{{ row.code }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Título</th>
+          <td mat-cell *matCellDef="let row" class="title-cell">{{ row.title }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="clientName">
+          <th mat-header-cell *matHeaderCellDef>Cliente</th>
+          <td mat-cell *matCellDef="let row">{{ row.clientName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="status-pill" [ngClass]="getStatusClass(row.status)">
+              {{ getStatusLabel(row.status) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="priority">
+          <th mat-header-cell *matHeaderCellDef>Prioridad</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="priority-pill" [ngClass]="getPriorityClass(row.priority)">
+              {{ getPriorityLabel(row.priority) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="scheduledAt">
+          <th mat-header-cell *matHeaderCellDef>Fecha Programada</th>
+          <td mat-cell *matCellDef="let row">
+            {{ row.scheduledAt ? (row.scheduledAt | date:'dd/MM/yyyy HH:mm') : 'Sin agendar' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-header">Acciones</th>
+          <td mat-cell *matCellDef="let row" class="actions-cell">
+            <button mat-icon-button color="primary" (click)="viewDetail(row.id)" matTooltip="Ver detalle de orden">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="order-row"></tr>
+      </table>
+
+      @if (!loading() && orders().length === 0) {
+        <div class="empty-state">
+          <mat-icon class="empty-icon">inbox</mat-icon>
+          <p class="empty-title">No se encontraron órdenes de trabajo</p>
+          <p class="empty-description">Intente cambiar los filtros o los términos de búsqueda.</p>
+        </div>
+      }
+    </div>
+
+    <mat-paginator
+      [length]="totalElements()"
+      [pageSize]="pageSize()"
+      [pageIndex]="pageIndex()"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      (page)="onPageChange($event)"
+      showFirstLastButtons
+      aria-label="Seleccionar página de órdenes">
+    </mat-paginator>
+  </div>
+</div>
