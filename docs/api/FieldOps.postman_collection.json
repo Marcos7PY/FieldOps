@@ -1,0 +1,327 @@
+﻿{
+  "info": {
+    "_postman_id": "8f887532-6a56-4c91-a1e4-d6a978fbb421",
+    "name": "FieldOps API",
+    "description": "Colección completa de endpoints para la plataforma FieldOps: autenticación, órdenes de trabajo, evidencias y analítica CQRS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Iniciar Sesión (Supervisor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"supervisor\",\n  \"password\": \"Demo2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Iniciar Sesión (Técnico)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"tecnico1\",\n  \"password\": \"Demo2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Renovar Token de Acceso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Obtener JWKS (Claves Públicas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/.well-known/jwks.json",
+              "host": ["{{baseUrl}}"],
+              "path": [".well-known", "jwks.json"]
+            }
+          }
+        },
+        {
+          "name": "Cerrar Sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Órdenes de Trabajo",
+      "item": [
+        {
+          "name": "Listar Órdenes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders?page=0&size=10&status=ASSIGNED",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders"],
+              "query": [
+                {"key": "page", "value": "0"},
+                {"key": "size", "value": "10"},
+                {"key": "status", "value": "ASSIGNED"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Detalle de Orden",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Crear Orden",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Revisión de transformador de distribución\",\n  \"description\": \"Inspección termográfica preventiva de bornas y nivel de aceite.\",\n  \"clientId\": 1,\n  \"priority\": \"HIGH\",\n  \"scheduledAt\": \"2026-09-15T10:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders"]
+            }
+          }
+        },
+        {
+          "name": "Asignar Técnico",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "\"0\""
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders/1/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders", "1", "assign"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Estado",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "\"1\""
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"comment\": \"Inicio de labores en sitio\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders/1/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Métricas Operativas (SQL Transaccional)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/work-orders/metrics?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "work-orders", "metrics"],
+              "query": [
+                {"key": "from", "value": "2026-01-01T00:00:00"},
+                {"key": "to", "value": "2026-12-31T23:59:59"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analítica CQRS",
+      "item": [
+        {
+          "name": "Métricas Diarias Proyectadas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analytics/daily?from=2026-09-01&to=2026-09-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analytics", "daily"],
+              "query": [
+                {"key": "from", "value": "2026-09-01"},
+                {"key": "to", "value": "2026-09-30"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rendimiento por Técnico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analytics/technicians/1?from=2026-09-01&to=2026-09-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analytics", "technicians", "1"],
+              "query": [
+                {"key": "from", "value": "2026-09-01"},
+                {"key": "to", "value": "2026-09-30"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reconstruir Proyecciones Históricas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analytics/projections/rebuild",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analytics", "projections", "rebuild"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

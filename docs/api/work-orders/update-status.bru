@@ -1,0 +1,26 @@
+﻿meta {
+  name: Actualizar Estado de Orden
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/work-orders/1/status
+  body: json
+  auth: bearer
+}
+
+headers {
+  If-Match: "1"
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "status": "IN_PROGRESS",
+    "comment": "Inicio de tareas de mantenimiento en sitio"
+  }
+}

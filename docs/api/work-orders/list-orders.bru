@@ -1,0 +1,15 @@
+﻿meta {
+  name: Listar Órdenes de Trabajo
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/work-orders?page=0&size=10&status=ASSIGNED
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

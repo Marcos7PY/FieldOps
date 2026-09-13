@@ -1,0 +1,15 @@
+﻿meta {
+  name: Consultar Métricas Operativas (Transaccional)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/work-orders/metrics?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

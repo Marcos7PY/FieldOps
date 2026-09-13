@@ -1,0 +1,11 @@
+﻿meta {
+  name: Obtener Claves Públicas (JWKS)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/.well-known/jwks.json
+  body: none
+  auth: none
+}

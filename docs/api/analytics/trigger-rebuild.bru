@@ -1,0 +1,15 @@
+﻿meta {
+  name: Disparar Reconstrucción Histórica
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/analytics/projections/rebuild
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

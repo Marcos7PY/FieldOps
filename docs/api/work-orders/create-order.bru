@@ -1,0 +1,25 @@
+﻿meta {
+  name: Crear Orden de Trabajo
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/work-orders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "Revisión de transformador de distribución",
+    "description": "Inspección termográfica preventiva de bornas y nivel de aceite.",
+    "clientId": 1,
+    "priority": "HIGH",
+    "scheduledAt": "2026-09-15T10:00:00"
+  }
+}

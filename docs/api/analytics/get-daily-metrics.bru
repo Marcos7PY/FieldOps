@@ -1,0 +1,15 @@
+﻿meta {
+  name: Métricas Diarias Proyectadas (CQRS)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/daily?from=2026-09-01&to=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

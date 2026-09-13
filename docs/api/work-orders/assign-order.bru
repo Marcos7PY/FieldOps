@@ -1,0 +1,25 @@
+﻿meta {
+  name: Asignar Orden a Técnico
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/work-orders/1/assign
+  body: json
+  auth: bearer
+}
+
+headers {
+  If-Match: "0"
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "technicianId": 1
+  }
+}

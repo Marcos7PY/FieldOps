@@ -1,0 +1,15 @@
+﻿meta {
+  name: Desempeño por Técnico (CQRS)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/technicians/1?from=2026-09-01&to=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

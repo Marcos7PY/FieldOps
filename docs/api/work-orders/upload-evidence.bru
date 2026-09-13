@@ -1,0 +1,22 @@
+﻿meta {
+  name: Registrar Evidencia con Coordenadas
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/work-orders/1/evidence
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipartForm {
+  latitude: 40.416775
+  longitude: -3.703790
+  capturedAt: 2026-09-13T09:30:00Z
+  file: @file(docs/diagrams/c4-containers.png)
+}
