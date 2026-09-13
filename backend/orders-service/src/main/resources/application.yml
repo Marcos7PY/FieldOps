@@ -21,6 +21,8 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    placeholders:
+      outbox_filter: "WHERE published_at IS NULL"
 
 server:
   port: 8082

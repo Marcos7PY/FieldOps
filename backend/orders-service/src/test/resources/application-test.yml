@@ -9,3 +9,5 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    placeholders:
+      outbox_filter: ""

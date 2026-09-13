@@ -53,6 +53,9 @@ class WorkOrderServiceTest {
     @Mock
     private WorkOrderCodeGenerator codeGenerator;
 
+    @Mock
+    private OutboxService outboxService;
+
     private final WorkOrderMapper mapper = new WorkOrderMapper();
     private WorkOrderService service;
 
@@ -64,7 +67,8 @@ class WorkOrderServiceTest {
                 evidenceRepository,
                 historyRepository,
                 codeGenerator,
-                mapper
+                mapper,
+                outboxService
         );
         lenient().when(workOrderRepository.saveAndFlush(any(WorkOrder.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

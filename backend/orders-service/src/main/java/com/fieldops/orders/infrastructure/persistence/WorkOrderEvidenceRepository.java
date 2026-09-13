@@ -12,4 +12,6 @@ public interface WorkOrderEvidenceRepository extends JpaRepository<WorkOrderEvid
     List<WorkOrderEvidence> findByWorkOrderId(Long workOrderId);
 
     boolean existsByWorkOrderId(Long workOrderId);
+
+    long countByWorkOrderId(Long workOrderId);
 }

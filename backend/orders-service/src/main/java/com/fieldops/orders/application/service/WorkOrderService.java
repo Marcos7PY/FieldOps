@@ -42,6 +42,7 @@ public class WorkOrderService {
     private final WorkOrderStatusHistoryRepository historyRepository;
     private final WorkOrderCodeGenerator codeGenerator;
     private final WorkOrderMapper mapper;
+    private final OutboxService outboxService;
 
     public WorkOrderService(
             WorkOrderRepository workOrderRepository,
@@ -49,7 +50,8 @@ public class WorkOrderService {
             WorkOrderEvidenceRepository evidenceRepository,
             WorkOrderStatusHistoryRepository historyRepository,
             WorkOrderCodeGenerator codeGenerator,
-            WorkOrderMapper mapper
+            WorkOrderMapper mapper,
+            OutboxService outboxService
     ) {
         this.workOrderRepository = workOrderRepository;
         this.clientRepository = clientRepository;
@@ -57,6 +59,7 @@ public class WorkOrderService {
         this.historyRepository = historyRepository;
         this.codeGenerator = codeGenerator;
         this.mapper = mapper;
+        this.outboxService = outboxService;
     }
 
     public WorkOrderResponse createWorkOrder(CreateWorkOrderRequest request, Long createdBy) {
@@ -95,6 +98,11 @@ public class WorkOrderService {
         historyRepository.save(history);
 
         savedOrder.getStatusHistory().add(history);
+
+        outboxService.recordOrderCreated(savedOrder, createdBy);
+        if (savedOrder.getAssignedTechnicianId() != null) {
+            outboxService.recordOrderAssigned(savedOrder);
+        }
 
         return mapper.toResponse(savedOrder);
     }
@@ -137,6 +145,7 @@ public class WorkOrderService {
         }
 
         WorkOrder saved = workOrderRepository.saveAndFlush(order);
+        outboxService.recordOrderAssigned(saved);
         return mapper.toResponse(saved);
     }
 
@@ -197,6 +206,18 @@ public class WorkOrderService {
         order.getStatusHistory().add(history);
 
         WorkOrder saved = workOrderRepository.saveAndFlush(order);
+
+        if (request.newStatus() == OrderStatus.IN_PROGRESS) {
+            outboxService.recordOrderStarted(saved);
+        } else if (request.newStatus() == OrderStatus.COMPLETED) {
+            int evidenceCount = saved.getEvidences() != null && !saved.getEvidences().isEmpty()
+                    ? saved.getEvidences().size()
+                    : (int) evidenceRepository.countByWorkOrderId(id);
+            outboxService.recordOrderCompleted(saved, evidenceCount);
+        } else if (request.newStatus() == OrderStatus.CANCELLED) {
+            outboxService.recordOrderCancelled(saved, userId, request.notes());
+        }
+
         return mapper.toResponse(saved);
     }
 

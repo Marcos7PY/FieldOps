@@ -44,6 +44,9 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.fieldops.orders.infrastructure.persistence.OutboxEventRepository outboxEventRepository;
+
     private RequestPostProcessor supervisor() {
         return jwt().authorities(new SimpleGrantedAuthority("ROLE_SUPERVISOR"))
                 .jwt(j -> j.claim("userId", 1L).claim("roles", List.of("ROLE_SUPERVISOR")));
@@ -170,6 +173,15 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalOrders").isNumber())
                 .andExpect(jsonPath("$.ordersByStatus.COMPLETED").isNumber());
+
+        java.util.List<com.fieldops.orders.domain.model.OutboxEvent> outboxEvents =
+                outboxEventRepository.findByAggregateIdOrderByCreatedAtAsc(orderId);
+        assertThat(outboxEvents).hasSize(4);
+        assertThat(outboxEvents.get(0).getEventType()).isEqualTo("ORDER_CREATED");
+        assertThat(outboxEvents.get(0).getPublishedAt()).isNull();
+        assertThat(outboxEvents.get(1).getEventType()).isEqualTo("ORDER_ASSIGNED");
+        assertThat(outboxEvents.get(2).getEventType()).isEqualTo("ORDER_STARTED");
+        assertThat(outboxEvents.get(3).getEventType()).isEqualTo("ORDER_COMPLETED");
     }
 
     @Test
