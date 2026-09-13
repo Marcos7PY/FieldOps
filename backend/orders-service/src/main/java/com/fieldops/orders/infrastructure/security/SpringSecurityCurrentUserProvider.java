@@ -32,7 +32,8 @@ public class SpringSecurityCurrentUserProvider implements CurrentUserProvider {
             } else if (userIdClaim instanceof String str) {
                 try {
                     return Optional.of(Long.parseLong(str));
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException e) {
+                    return Optional.empty();
                 }
             }
         }
@@ -41,7 +42,8 @@ public class SpringSecurityCurrentUserProvider implements CurrentUserProvider {
             if (headerVal != null && !headerVal.isBlank()) {
                 try {
                     return Optional.of(Long.parseLong(headerVal.trim()));
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException e) {
+                    return Optional.empty();
                 }
             }
         }

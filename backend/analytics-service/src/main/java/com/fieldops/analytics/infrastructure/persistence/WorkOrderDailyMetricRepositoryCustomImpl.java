@@ -21,14 +21,19 @@ public class WorkOrderDailyMetricRepositoryCustomImpl implements WorkOrderDailyM
 
     private boolean isSqlServer() {
         if (isSqlServer == null) {
-            try (var conn = jdbcTemplate.getDataSource().getConnection()) {
-                String name = conn.getMetaData().getDatabaseProductName();
-                isSqlServer = name != null && name.toLowerCase().contains("microsoft");
-            } catch (Exception e) {
+            var dataSource = jdbcTemplate.getDataSource();
+            if (dataSource != null) {
+                try (var conn = dataSource.getConnection()) {
+                    String name = conn.getMetaData().getDatabaseProductName();
+                    isSqlServer = name != null && name.toLowerCase().contains("microsoft");
+                } catch (java.sql.SQLException e) {
+                    isSqlServer = false;
+                }
+            } else {
                 isSqlServer = false;
             }
         }
-        return isSqlServer;
+        return Boolean.TRUE.equals(isSqlServer);
     }
 
     @Override

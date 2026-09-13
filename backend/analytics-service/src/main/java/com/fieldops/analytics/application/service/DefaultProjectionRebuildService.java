@@ -71,7 +71,7 @@ public class DefaultProjectionRebuildService implements ProjectionRebuildService
             log.info("Projection rebuild setup complete for {}", KafkaConsumerConfig.CONSUMER_GROUP);
         } catch (Exception e) {
             log.error("Error during projection rebuild: {}", e.getMessage(), e);
-            throw new RuntimeException("Error during projection rebuild: " + e.getMessage(), e);
+            throw new IllegalStateException("Error during projection rebuild: " + e.getMessage(), e);
         } finally {
             if (container != null) {
                 container.start();

@@ -48,9 +48,13 @@ public class DefaultKafkaOffsetResetter implements KafkaOffsetResetter {
 
             adminClient.alterConsumerGroupOffsets(consumerGroup, offsetsToCommit).all().get(10, TimeUnit.SECONDS);
             log.info("Reset offsets to earliest for consumer group {} on topic {}: {}", consumerGroup, topic, offsetsToCommit);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while resetting consumer group offsets: {}", e.getMessage(), e);
+            throw new IllegalStateException("Interrupted while resetting consumer group offsets", e);
         } catch (Exception e) {
             log.error("Failed to reset consumer group offsets: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to reset consumer group offsets: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to reset consumer group offsets: " + e.getMessage(), e);
         }
     }
 }
