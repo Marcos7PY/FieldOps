@@ -23,6 +23,8 @@ spring:
     baseline-on-migrate: true
     placeholders:
       outbox_filter: "WHERE published_at IS NULL"
+      performance_filter: "WHERE status <> 'CANCELLED'"
+      include_clause: "INCLUDE (assigned_technician_id, completed_at)"
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:

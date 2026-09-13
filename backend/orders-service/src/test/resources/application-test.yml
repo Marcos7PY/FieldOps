@@ -11,6 +11,8 @@ spring:
     enabled: true
     placeholders:
       outbox_filter: ""
+      performance_filter: ""
+      include_clause: ""
   kafka:
     bootstrap-servers: localhost:9092
     properties:
