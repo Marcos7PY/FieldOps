@@ -1,4 +1,4 @@
-﻿name: fieldops
+name: fieldops
 
 services:
   sqlserver:
@@ -101,6 +101,29 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+    networks:
+      - fieldops-net
+
+  orders-service:
+    build:
+      context: ../../backend/orders-service
+      dockerfile: Dockerfile
+    container_name: fieldops-orders-service
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_orders;encrypt=true;trustServerCertificate=true
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    volumes:
+      - ${UPLOADS_PATH:-../../uploads}:/app/uploads
     networks:
       - fieldops-net
 
