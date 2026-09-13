@@ -5,3 +5,4 @@ export * from './evidence.model';
 export * from './status-history.model';
 export * from './page.model';
 export * from './work-order.model';
+export * from './offline.model';

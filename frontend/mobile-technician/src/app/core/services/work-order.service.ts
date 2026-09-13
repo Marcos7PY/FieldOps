@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ChangeStatusRequest, Evidence, Page, WorkOrder, WorkOrderSummary } from '../models';
 import { AuthService } from './auth.service';
+import { DatabaseService } from './database.service';
 
 export interface UploadProgressState {
   progress: number;
@@ -16,6 +17,7 @@ export interface UploadProgressState {
 export class WorkOrderService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly db = inject(DatabaseService);
 
   getAssignedWorkOrders(page = 0, size = 20): Observable<Page<WorkOrderSummary>> {
     const user = this.authService.currentUser();
@@ -28,11 +30,21 @@ export class WorkOrderService {
       params = params.set('technicianId', user.id.toString());
     }
 
-    return this.http.get<Page<WorkOrderSummary>>(`${environment.apiBaseUrl}/work-orders`, { params });
+    return this.http.get<Page<WorkOrderSummary>>(`${environment.apiBaseUrl}/work-orders`, { params }).pipe(
+      map(res => {
+        this.db.saveLocalOrders(res.content);
+        return res;
+      })
+    );
   }
 
   getWorkOrderById(id: number): Observable<WorkOrder> {
-    return this.http.get<WorkOrder>(`${environment.apiBaseUrl}/work-orders/${id}`);
+    return this.http.get<WorkOrder>(`${environment.apiBaseUrl}/work-orders/${id}`).pipe(
+      map(ord => {
+        this.db.saveLocalOrders([ord]);
+        return ord;
+      })
+    );
   }
 
   changeStatus(id: number, request: ChangeStatusRequest, version: number): Observable<WorkOrder> {
