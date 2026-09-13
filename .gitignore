@@ -1,10 +1,11 @@
-﻿target/
+target/
 build/
 node_modules/
 dist/
 www/
 .angular/
 android/
+!frontend/mobile-technician/android/
 ios/
 *.log
 .env
