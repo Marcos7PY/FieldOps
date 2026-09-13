@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden Asignada</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #333333; line-height: 1.6; margin: 0; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 6px; padding: 24px;">
+        <h2 style="color: #0b5ed7; margin-top: 0;">Nueva Orden Asignada</h2>
+        <p>Estimado/a <span th:text="${technicianName}">Tecnico</span>,</p>
+        <p>Se le ha asignado una nueva orden de trabajo con el codigo <strong th:text="${orderCode}">ORD-000</strong>.</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold; width: 40%;">Codigo de Orden:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${orderCode}">ORD-000</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Fecha Programada:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${scheduledAt}">Fecha</td>
+            </tr>
+        </table>
+        <p>Por favor revise los detalles en la aplicacion movil FieldOps y registre el inicio de labores una vez en sitio.</p>
+        <p style="margin-top: 24px; font-size: 12px; color: #777777;">FieldOps Platform - Notificacion Automatica</p>
+    </div>
+</body>
+</html>

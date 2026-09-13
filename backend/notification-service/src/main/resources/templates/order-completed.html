@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden Completada</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #333333; line-height: 1.6; margin: 0; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 6px; padding: 24px;">
+        <h2 style="color: #198754; margin-top: 0;">Orden de Trabajo Finalizada</h2>
+        <p>Se ha registrado la finalizacion exitosa de la orden de trabajo <strong th:text="${orderCode}">ORD-000</strong>.</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold; width: 40%;">Codigo de Orden:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${orderCode}">ORD-000</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Tecnico:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${technicianId}">ID</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Duracion (minutos):</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${durationMinutes}">0</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Evidencias Adjuntas:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${evidenceCount}">0</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Fecha de Cierre:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" th:text="${completedAt}">Fecha</td>
+            </tr>
+        </table>
+        <p style="margin-top: 24px; font-size: 12px; color: #777777;">FieldOps Platform - Notificacion Automatica</p>
+    </div>
+</body>
+</html>
