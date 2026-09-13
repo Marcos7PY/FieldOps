@@ -1,0 +1,213 @@
+<div class="dashboard-page">
+  <div class="page-header">
+    <div class="title-group">
+      <h1 class="page-title">Dashboard de Métricas</h1>
+      <span class="subtitle">Indicadores y analítica operativa en tiempo real</span>
+    </div>
+
+    <div class="header-actions">
+      <button mat-stroked-button (click)="loadDashboardData()" [disabled]="loading()" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+        <span>Actualizar</span>
+      </button>
+
+      @if (authService.hasRole('ROLE_SUPERVISOR') || authService.hasRole('ROLE_ADMIN')) {
+        <button
+          mat-raised-button
+          color="warn"
+          (click)="rebuildProjection()"
+          [disabled]="rebuilding() || loading()"
+          matTooltip="Trunca y reconstruye la proyección analítica desde el histórico Kafka"
+          class="rebuild-btn">
+          @if (rebuilding()) {
+            <mat-spinner diameter="18"></mat-spinner>
+            <span>Reconstruyendo...</span>
+          } @else {
+            <ng-container>
+              <mat-icon>autorenew</mat-icon>
+              <span>Reconstruir Proyección</span>
+            </ng-container>
+          }
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (rebuildMessage()) {
+    <div class="success-banner" role="status">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ rebuildMessage() }}</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <!-- Indicadores Clave (3 KPIs) -->
+  <div class="kpi-grid">
+    <mat-card class="kpi-card">
+      <mat-card-content class="kpi-content">
+        <div class="kpi-icon-wrapper primary-icon">
+          <mat-icon>assignment</mat-icon>
+        </div>
+        <div class="kpi-data">
+          <span class="kpi-label">Total de Órdenes</span>
+          <span class="kpi-value">{{ totalOrders() }}</span>
+          <div class="kpi-subinfo">
+            <span class="completed-tag">{{ totalCompletedOrders() }} completadas</span>
+            <span class="in-progress-tag">{{ totalInProgressOrders() }} activas</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="kpi-card">
+      <mat-card-content class="kpi-content">
+        <div class="kpi-icon-wrapper amber-icon">
+          <mat-icon>timelapse</mat-icon>
+        </div>
+        <div class="kpi-data">
+          <span class="kpi-label">Duración Promedio</span>
+          <div class="value-unit-row">
+            <span class="kpi-value">{{ avgDuration() }}</span>
+            <span class="kpi-unit">minutos</span>
+          </div>
+          <span class="kpi-subtext">Tiempo medio de ejecución por orden</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="kpi-card">
+      <mat-card-content class="kpi-content">
+        <div class="kpi-icon-wrapper green-icon">
+          <mat-icon>engineering</mat-icon>
+        </div>
+        <div class="kpi-data">
+          <span class="kpi-label">Técnicos Operativos</span>
+          <span class="kpi-value">{{ activeTechniciansCount() }}</span>
+          <span class="kpi-subtext">Técnicos con órdenes registradas</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Gráficos (2 Gráficos) -->
+  <div class="charts-grid">
+    <!-- Gráfico 1: Evolución Diaria de Órdenes -->
+    <mat-card class="chart-card">
+      <mat-card-header>
+        <mat-card-title>Evolución Diaria de Órdenes</mat-card-title>
+        <mat-card-subtitle>Volumen diario proyectado por estado</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content class="chart-body">
+        <div class="chart-legend">
+          <div class="legend-item">
+            <span class="legend-dot dot-completed"></span>
+            <span>Completadas</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot dot-in-progress"></span>
+            <span>En Progreso</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot dot-other"></span>
+            <span>Otras</span>
+          </div>
+        </div>
+
+        @if (dailyChartData().length === 0) {
+          <div class="chart-empty">
+            <mat-icon>bar_chart</mat-icon>
+            <p>No hay datos métricos diarios suficientes para graficar.</p>
+          </div>
+        } @else {
+          <div class="bar-chart-container">
+            <div class="bars-wrapper">
+              @for (col of dailyChartData(); track col.date) {
+                <div class="bar-column">
+                  <div class="bar-stack" [matTooltip]="col.date + ': ' + col.total + ' órdenes (' + col.completed + ' completadas, ' + col.inProgress + ' en progreso)'">
+                    @if (col.otherHeight > 0) {
+                      <div class="bar-segment bar-other" [style.height.px]="col.otherHeight"></div>
+                    }
+                    @if (col.inProgressHeight > 0) {
+                      <div class="bar-segment bar-in-progress" [style.height.px]="col.inProgressHeight"></div>
+                    }
+                    @if (col.completedHeight > 0) {
+                      <div class="bar-segment bar-completed" [style.height.px]="col.completedHeight"></div>
+                    }
+                  </div>
+                  <span class="column-date">{{ col.date.substring(5) }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Gráfico 2: Desempeño por Técnico -->
+    <mat-card class="chart-card">
+      <mat-card-header>
+        <mat-card-title>Rendimiento por Técnico</mat-card-title>
+        <mat-card-subtitle>Órdenes completadas, en progreso y promedio</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content class="chart-body">
+        @if ((techMetrics()?.technicians?.length ?? 0) === 0) {
+          <div class="chart-empty">
+            <mat-icon>people_outline</mat-icon>
+            <p>No hay técnicos con órdenes registradas en la proyección.</p>
+          </div>
+        } @else {
+          <div class="tech-bars-list">
+            @for (tech of techMetrics()?.technicians; track tech.technicianId) {
+              <div class="tech-item">
+                <div class="tech-header">
+                  <div class="tech-info">
+                    <mat-icon class="tech-icon">person</mat-icon>
+                    <span class="tech-name">Técnico #{{ tech.technicianId }}</span>
+                  </div>
+                  <div class="tech-badges">
+                    <span class="tech-duration-badge" *ngIf="tech.avgDurationMinutes !== null && tech.avgDurationMinutes !== undefined">
+                      {{ tech.avgDurationMinutes | number:'1.1-1' }} min prom.
+                    </span>
+                    <span class="tech-total-count">{{ tech.completedOrders + tech.inProgressOrders + tech.assignedOrders }} órdenes</span>
+                  </div>
+                </div>
+
+                <div class="progress-bar-group">
+                  <div class="progress-track">
+                    <div
+                      class="progress-fill fill-completed"
+                      [style.width.%]="getBarWidthPercent(tech.completedOrders)"
+                      [matTooltip]="'Completadas: ' + tech.completedOrders">
+                    </div>
+                    <div
+                      class="progress-fill fill-in-progress"
+                      [style.width.%]="getBarWidthPercent(tech.inProgressOrders)"
+                      [matTooltip]="'En progreso: ' + tech.inProgressOrders">
+                    </div>
+                  </div>
+                  <div class="progress-labels">
+                    <span class="label-completed">{{ tech.completedOrders }} completadas</span>
+                    <span class="label-in-progress">{{ tech.inProgressOrders }} activas</span>
+                    <span class="label-assigned">{{ tech.assignedOrders }} asignadas</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
