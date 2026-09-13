@@ -104,6 +104,27 @@ services:
     networks:
       - fieldops-net
 
+  auth-service:
+    build:
+      context: ../../backend/auth-service
+      dockerfile: Dockerfile
+    container_name: fieldops-auth-service
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_auth;encrypt=true;trustServerCertificate=true
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      JWT_KEY_PATH: /app/keys
+    volumes:
+      - ${JWT_KEYS_PATH:-${JWT_KEY_PATH:-../../keys}}:/app/keys
+    networks:
+      - fieldops-net
+
   orders-service:
     build:
       context: ../../backend/orders-service
