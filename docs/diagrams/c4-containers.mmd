@@ -1,0 +1,71 @@
+﻿graph TB
+    subgraph Users ["Usuarios del Sistema"]
+        Admin["Supervisor / Administrador<br/>[Web Browser]"]
+        Tech["Técnico de Campo<br/>[Mobile Device]"]
+    end
+
+    subgraph Frontends ["Aplicaciones Cliente"]
+        WebAdmin["Web Admin Portal<br/>[Angular 19, TypeScript, SCSS]<br/>Gestión de órdenes, asignación y métricas"]
+        MobileTech["Mobile Technician App<br/>[Ionic 8, Angular 19, Capacitor 7, SQLite]<br/>Ejecución offline-first y captura de evidencias"]
+    end
+
+    subgraph GatewayBoundary ["Punto de Entrada"]
+        Gateway["API Gateway :8080<br/>[Spring Cloud Gateway, Java 21]<br/>Enrutamiento, validación JWT/JWKS, Rate Limiting, CORS"]
+    end
+
+    subgraph Microservices ["Microservicios Backend"]
+        AuthService["Auth Service :8081<br/>[Spring Boot 3.3, Java 21]<br/>Gestión de usuarios, emisión JWT RS256, JWKS"]
+        OrdersService["Orders Service :8082<br/>[Spring Boot 3.3, Java 21]<br/>Ciclo de vida de órdenes, outbox transaccional, evidencias"]
+        NotificationService["Notification Service :8083<br/>[Spring Boot 3.3, Java 21]<br/>Consumidor Kafka, notificaciones por email e idempotencia"]
+        AnalyticsService["Analytics Service :8084<br/>[Spring Boot 3.3, Java 21]<br/>Consumidor Kafka, proyección CQRS y reconstrucción"]
+    end
+
+    subgraph Messaging ["Mensajería y Esquemas"]
+        Kafka["Apache Kafka :9092<br/>[KRaft Cluster Confluent 7.6.1]<br/>Topic: fieldops.work-orders.events (3 particiones)<br/>Topic: fieldops.work-orders.events-dlt (1 partición)"]
+        SchemaRegistry["Schema Registry :8090<br/>[Confluent 7.6.1]<br/>Esquemas Avro con compatibilidad BACKWARD"]
+    end
+
+    subgraph DatabaseSystem ["Persistencia Relacional"]
+        SqlServer["Microsoft SQL Server 2022 :1433<br/>[Motor Relacional ACID]"]
+        DbAuth[("fieldops_auth<br/>Usuarios y tokens")]
+        DbOrders[("fieldops_orders<br/>Órdenes, evidencias, outbox")]
+        DbNotifications[("fieldops_notifications<br/>Registro de envíos")]
+        DbAnalytics[("fieldops_analytics<br/>Proyecciones CQRS")]
+    end
+
+    subgraph AuxServices ["Herramientas de Soporte"]
+        MailHog["MailHog :8025 / :1025<br/>Servidor SMTP simulado"]
+        AKHQ["AKHQ :8091<br/>Inspección visual de tópicos y consumer groups"]
+    end
+
+    Admin -->|HTTPS / REST| WebAdmin
+    Tech -->|HTTPS / REST| MobileTech
+
+    WebAdmin -->|HTTPS / REST /api/*| Gateway
+    MobileTech -->|HTTPS / REST /api/*| Gateway
+
+    Gateway -->|Enruta auth| AuthService
+    Gateway -->|Enruta órdenes| OrdersService
+    Gateway -->|Enruta analítica| AnalyticsService
+    Gateway -.->|Valida tokens vía JWKS| AuthService
+
+    OrdersService -->|Publica eventos Avro| Kafka
+    NotificationService -->|Consume eventos| Kafka
+    AnalyticsService -->|Consume eventos| Kafka
+    OrdersService -.->|Valida y registra esquemas| SchemaRegistry
+    NotificationService -.->|Descarga esquemas| SchemaRegistry
+    AnalyticsService -.->|Descarga esquemas| SchemaRegistry
+
+    NotificationService -->|Envía correos SMTP :1025| MailHog
+
+    AuthService --> DbAuth
+    OrdersService --> DbOrders
+    NotificationService --> DbNotifications
+    AnalyticsService --> DbAnalytics
+
+    DbAuth --- SqlServer
+    DbOrders --- SqlServer
+    DbNotifications --- SqlServer
+    DbAnalytics --- SqlServer
+
+    AKHQ -.->|Monitorea particiones y offsets| Kafka

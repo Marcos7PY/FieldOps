@@ -1,0 +1,126 @@
+﻿erDiagram
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        varchar role
+        bit active
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    REFRESH_TOKENS {
+        bigint id PK
+        varchar token_hash UK
+        bigint user_id FK
+        datetime2 expires_at
+        bit revoked
+        datetime2 created_at
+    }
+
+    CLIENTS {
+        bigint id PK
+        varchar name
+        varchar email
+        varchar phone
+        varchar address
+        datetime2 created_at
+    }
+
+    TECHNICIANS {
+        bigint id PK
+        bigint user_id
+        varchar full_name
+        varchar specialty
+        bit active
+        datetime2 created_at
+    }
+
+    WORK_ORDERS {
+        bigint id PK
+        varchar code UK
+        varchar title
+        nvarchar description
+        bigint client_id FK
+        bigint assigned_technician_id FK
+        varchar status
+        varchar priority
+        datetime2 scheduled_at
+        datetime2 started_at
+        datetime2 completed_at
+        bigint row_version
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    WORK_ORDER_EVIDENCE {
+        bigint id PK
+        bigint work_order_id FK
+        varchar file_path
+        varchar file_type
+        bigint file_size
+        decimal latitude
+        decimal longitude
+        datetime2 captured_at
+        datetime2 created_at
+    }
+
+    WORK_ORDER_STATUS_HISTORY {
+        bigint id PK
+        bigint work_order_id FK
+        varchar from_status
+        varchar to_status
+        bigint changed_by_user_id
+        nvarchar comment
+        datetime2 changed_at
+    }
+
+    OUTBOX_EVENTS {
+        uniqueidentifier id PK
+        varchar aggregate_type
+        varchar aggregate_id
+        varchar event_type
+        nvarchar payload_json
+        varchar status
+        int retry_count
+        datetime2 created_at
+        datetime2 processed_at
+    }
+
+    NOTIFICATION_LOGS {
+        bigint id PK
+        varchar event_id UK
+        bigint order_id
+        varchar recipient_email
+        varchar subject
+        nvarchar body
+        varchar status
+        datetime2 sent_at
+    }
+
+    DAILY_ORDER_METRICS {
+        bigint id PK
+        date metric_date UK
+        bigint total_orders
+        bigint completed_orders
+        bigint cancelled_orders
+        decimal avg_duration_minutes
+        datetime2 updated_at
+    }
+
+    TECHNICIAN_PERFORMANCE {
+        bigint id PK
+        bigint technician_id
+        date metric_date
+        bigint completed_count
+        decimal avg_completion_hours
+        datetime2 updated_at
+    }
+
+    USERS ||--o{ REFRESH_TOKENS : "posee"
+    CLIENTS ||--o{ WORK_ORDERS : "solicita"
+    TECHNICIANS ||--o{ WORK_ORDERS : "ejecuta"
+    WORK_ORDERS ||--o{ WORK_ORDER_EVIDENCE : "contiene"
+    WORK_ORDERS ||--o{ WORK_ORDER_STATUS_HISTORY : "registra"
+    WORK_ORDERS ||--o{ OUTBOX_EVENTS : "origina"
