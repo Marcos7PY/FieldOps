@@ -98,6 +98,33 @@
         </ion-card-content>
       </ion-card>
 
+      <!-- Evidence Photo Capture (When In Progress) -->
+      @if (ord.status === 'IN_PROGRESS') {
+        <ion-card class="detail-card evidence-capture-card">
+          <ion-card-header>
+            <ion-card-title class="section-title">
+              <ion-icon name="camera-outline"></ion-icon>
+              Evidencia Fotográfica
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (currentPhoto(); as photo) {
+              <div class="photo-preview-container">
+                <img [src]="photo.webPath" alt="Evidencia capturada" class="captured-preview" />
+                <ion-button fill="clear" color="danger" size="small" (click)="clearPhoto()">
+                  Descartar foto
+                </ion-button>
+              </div>
+            } @else {
+              <ion-button expand="block" fill="outline" (click)="capturePhoto()">
+                <ion-icon slot="start" name="camera-outline"></ion-icon>
+                Tomar Fotografía
+              </ion-button>
+            }
+          </ion-card-content>
+        </ion-card>
+      }
+
       <!-- Action Buttons depending on State -->
       <div class="action-section">
         @if (ord.status === 'ASSIGNED') {

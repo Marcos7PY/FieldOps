@@ -35,6 +35,7 @@ import {
 } from 'ionicons/icons';
 import { WorkOrder } from '../../../core/models';
 import { WorkOrderService } from '../../../core/services/work-order.service';
+import { CameraService, CapturedPhoto } from '../../../core/services/camera.service';
 
 @Component({
   selector: 'app-order-detail',
@@ -67,11 +68,13 @@ export class OrderDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly workOrderService = inject(WorkOrderService);
   private readonly alertController = inject(AlertController);
+  private readonly cameraService = inject(CameraService);
 
   readonly order = signal<WorkOrder | null>(null);
   readonly loading = signal(true);
   readonly updatingStatus = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly currentPhoto = signal<CapturedPhoto | null>(null);
 
   constructor() {
     addIcons({
@@ -84,6 +87,17 @@ export class OrderDetailPage implements OnInit {
       playOutline,
       timeOutline
     });
+  }
+
+  async capturePhoto(): Promise<void> {
+    const photo = await this.cameraService.takePhoto();
+    if (photo) {
+      this.currentPhoto.set(photo);
+    }
+  }
+
+  clearPhoto(): void {
+    this.currentPhoto.set(null);
   }
 
   ngOnInit(): void {
