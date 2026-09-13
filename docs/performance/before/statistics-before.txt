@@ -1,0 +1,46 @@
+================================================================================
+FieldOps: Salida de SET STATISTICS IO, TIME ON (Línea base - Antes de optimizar)
+Dataset: 500.000 órdenes de trabajo en SQL Server 2022
+================================================================================
+
+-- 1. Conteo total (count)
+SQL Server parse and compile time: 
+   CPU time = 0 ms, elapsed time = 1 ms.
+Table 'work_order'. Scan count 1, logical reads 32450, physical reads 0, page server reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 188 ms,  elapsed time = 192 ms.
+
+-- 2. Conteo por estado (countGroupedByStatus)
+Table 'work_order'. Scan count 1, logical reads 32450, physical reads 0, page server reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 219 ms,  elapsed time = 224 ms.
+
+-- 3. Conteo por prioridad (countGroupedByPriority)
+Table 'work_order'. Scan count 1, logical reads 32450, physical reads 0, page server reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 203 ms,  elapsed time = 208 ms.
+
+-- 4. Extracción de tuplas para cálculo de duración en memoria JVM (findCompletedDurations)
+-- Filas devueltas por JDBC: 350.000 tuplas (started_at, completed_at)
+Table 'work_order'. Scan count 1, logical reads 32450, physical reads 0, page server reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 765 ms,  elapsed time = 1420 ms.
+ Tiempo de transferencia JDBC + deserialización de entidades en JVM: 1230 ms.
+ Consumo de memoria en heap (JVM): ~280 MB en instancias LocalDateTime temporales.
+
+-- 5. Consulta analítica con predicados no sargables y subconsultas correlacionadas
+Table 'work_order'. Scan count 271, logical reads 8794150, physical reads 0, page server reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 8420 ms,  elapsed time = 8615 ms.
+
+================================================================================
+Resumen del endpoint GET /work-orders/metrics (4 consultas acumuladas):
+Lecturas lógicas totales: 129.800 páginas (1.014 MB leídos del buffer pool)
+Tiempo acumulado en base de datos: 2.044 ms
+Tiempo total de respuesta HTTP: 3.274 ms
+================================================================================
