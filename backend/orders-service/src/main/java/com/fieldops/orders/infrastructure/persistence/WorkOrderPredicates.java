@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class WorkOrderSpecifications {
+public final class WorkOrderPredicates {
 
-    private WorkOrderSpecifications() {
+    private WorkOrderPredicates() {
     }
 
     public static Specification<WorkOrder> withFilters(
