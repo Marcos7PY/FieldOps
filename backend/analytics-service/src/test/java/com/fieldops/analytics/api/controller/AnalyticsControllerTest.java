@@ -3,6 +3,7 @@ package com.fieldops.analytics.api.controller;
 import com.fieldops.analytics.api.dto.DailyMetricsResponse;
 import com.fieldops.analytics.api.dto.TechnicianMetricsResponse;
 import com.fieldops.analytics.application.service.AnalyticsQueryService;
+import com.fieldops.analytics.application.service.ProjectionRebuildService;
 import com.fieldops.analytics.infrastructure.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +17,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,6 +36,9 @@ class AnalyticsControllerTest {
 
     @MockBean
     private AnalyticsQueryService queryService;
+
+    @MockBean
+    private ProjectionRebuildService rebuildService;
 
     @MockBean
     private JwtDecoder jwtDecoder;
@@ -76,5 +83,25 @@ class AnalyticsControllerTest {
         mockMvc.perform(get("/api/v1/analytics/metrics/technicians"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.technicians").isArray());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERVISOR")
+    void shouldReturn202AcceptedWhenRebuildingProjections() throws Exception {
+        when(rebuildService.rebuildProjectionAsync()).thenReturn(CompletableFuture.completedFuture(null));
+
+        mockMvc.perform(post("/api/v1/analytics/projections/rebuild"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        verify(rebuildService).rebuildProjectionAsync();
+    }
+
+    @Test
+    @WithMockUser(roles = "TECHNICIAN")
+    void shouldReturn403WhenTechnicianRebuildsProjections() throws Exception {
+        mockMvc.perform(post("/api/v1/analytics/projections/rebuild"))
+                .andExpect(status().isForbidden());
     }
 }
