@@ -18,6 +18,7 @@ import {
   IonItem,
   IonLabel,
   IonList,
+  IonProgressBar,
   IonSpinner,
   IonTitle,
   IonToolbar
@@ -28,6 +29,7 @@ import {
   calendarOutline,
   cameraOutline,
   checkmarkCircleOutline,
+  cloudUploadOutline,
   navigateOutline,
   callOutline,
   playOutline,
@@ -60,7 +62,8 @@ import { CameraService, CapturedPhoto } from '../../../core/services/camera.serv
     IonList,
     IonItem,
     IonLabel,
-    IonSpinner
+    IonSpinner,
+    IonProgressBar
   ]
 })
 export class OrderDetailPage implements OnInit {
@@ -75,6 +78,8 @@ export class OrderDetailPage implements OnInit {
   readonly updatingStatus = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly currentPhoto = signal<CapturedPhoto | null>(null);
+  readonly uploadingEvidence = signal<boolean>(false);
+  readonly uploadProgress = signal<number | null>(null);
 
   constructor() {
     addIcons({
@@ -82,6 +87,7 @@ export class OrderDetailPage implements OnInit {
       calendarOutline,
       cameraOutline,
       checkmarkCircleOutline,
+      cloudUploadOutline,
       navigateOutline,
       callOutline,
       playOutline,
@@ -98,6 +104,42 @@ export class OrderDetailPage implements OnInit {
 
   clearPhoto(): void {
     this.currentPhoto.set(null);
+    this.uploadProgress.set(null);
+  }
+
+  uploadEvidence(): void {
+    const photo = this.currentPhoto();
+    const ord = this.order();
+    if (!photo || !ord || this.uploadingEvidence()) return;
+
+    this.uploadingEvidence.set(true);
+    this.uploadProgress.set(0);
+
+    const filename = `evidence-${Date.now()}.${photo.format || 'jpg'}`;
+
+    this.workOrderService.uploadEvidenceWithProgress(ord.id, photo.blob, filename).subscribe({
+      next: (state) => {
+        this.uploadProgress.set(state.progress);
+        if (state.response) {
+          const newEvidence = state.response;
+          const updatedEvidences = [...(ord.evidences || []), newEvidence];
+          this.order.set({ ...ord, evidences: updatedEvidences });
+          this.uploadingEvidence.set(false);
+          this.uploadProgress.set(null);
+          this.currentPhoto.set(null);
+        }
+      },
+      error: async () => {
+        this.uploadingEvidence.set(false);
+        this.uploadProgress.set(null);
+        const alert = await this.alertController.create({
+          header: 'Error de Subida',
+          message: 'No fue posible subir la evidencia fotográfica. Intente nuevamente.',
+          buttons: ['Aceptar']
+        });
+        await alert.present();
+      }
+    });
   }
 
   ngOnInit(): void {

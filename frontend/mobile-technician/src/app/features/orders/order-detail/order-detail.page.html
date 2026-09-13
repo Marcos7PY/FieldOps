@@ -111,9 +111,23 @@
             @if (currentPhoto(); as photo) {
               <div class="photo-preview-container">
                 <img [src]="photo.webPath" alt="Evidencia capturada" class="captured-preview" />
-                <ion-button fill="clear" color="danger" size="small" (click)="clearPhoto()">
-                  Descartar foto
-                </ion-button>
+
+                @if (uploadingEvidence()) {
+                  <div class="upload-progress-box">
+                    <ion-progress-bar [value]="(uploadProgress() || 0) / 100" color="primary"></ion-progress-bar>
+                    <p class="progress-text">Subiendo evidencia: {{ uploadProgress() }}%</p>
+                  </div>
+                } @else {
+                  <div class="preview-actions">
+                    <ion-button expand="block" color="primary" (click)="uploadEvidence()">
+                      <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                      Subir Evidencia
+                    </ion-button>
+                    <ion-button fill="clear" color="danger" size="small" (click)="clearPhoto()">
+                      Descartar foto
+                    </ion-button>
+                  </div>
+                }
               </div>
             } @else {
               <ion-button expand="block" fill="outline" (click)="capturePhoto()">
@@ -121,6 +135,33 @@
                 Tomar Fotografía
               </ion-button>
             }
+          </ion-card-content>
+        </ion-card>
+      }
+
+      <!-- Registered Evidences List -->
+      @if (ord.evidences && ord.evidences.length > 0) {
+        <ion-card class="detail-card">
+          <ion-card-header>
+            <ion-card-title class="section-title">
+              <ion-icon name="camera-outline"></ion-icon>
+              Evidencias Registradas ({{ ord.evidences.length }})
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="evidences-list">
+              @for (ev of ord.evidences; track ev.id) {
+                <div class="evidence-row">
+                  <div class="evidence-info">
+                    <span class="evidence-date">{{ ev.uploadedAt | date:'short' }}</span>
+                    <span class="evidence-size">{{ (ev.sizeBytes / 1024) | number:'1.0-0' }} KB</span>
+                  </div>
+                  @if (ev.latitude && ev.longitude) {
+                    <span class="evidence-coords">GPS: {{ ev.latitude | number:'1.4-4' }}, {{ ev.longitude | number:'1.4-4' }}</span>
+                  }
+                </div>
+              }
+            </div>
           </ion-card-content>
         </ion-card>
       }
