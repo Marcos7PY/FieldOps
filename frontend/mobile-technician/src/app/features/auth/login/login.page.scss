@@ -1,0 +1,59 @@
+.login-content {
+  --background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-wrapper {
+  max-width: 420px;
+  margin: 40px auto 0;
+  width: 100%;
+}
+
+.brand-section {
+  margin-bottom: 24px;
+
+  .brand-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin: 0;
+  }
+
+  .brand-subtitle {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-top: 4px;
+  }
+}
+
+.login-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: #ffffff;
+  margin: 0;
+}
+
+.form-item {
+  --background: transparent;
+  margin-bottom: 12px;
+}
+
+.error-banner {
+  background: #fee2e2;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.submit-section {
+  margin-top: 24px;
+}
+
+.login-button {
+  --border-radius: 8px;
+  font-weight: 600;
+  height: 48px;
+}
