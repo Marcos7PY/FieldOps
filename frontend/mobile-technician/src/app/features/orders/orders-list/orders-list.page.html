@@ -10,6 +10,13 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding-bottom">
+  @if (!network.isOnline()) {
+    <div class="offline-banner">
+      <ion-icon name="cloud-offline-outline"></ion-icon>
+      <span>Modo sin conexión. Cambios locales pendientes de sincronización.</span>
+    </div>
+  }
+
   <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
     <ion-refresher-content pullingText="Desliza para actualizar..." refreshingSpinner="crescent">
     </ion-refresher-content>
@@ -41,6 +48,12 @@
             <div class="order-header-row">
               <span class="order-code">{{ order.code }}</span>
               <div class="badges-row">
+                @if (order.syncStatus === 'PENDING_SYNC') {
+                  <ion-badge color="tertiary" class="sync-badge">
+                    <ion-icon name="sync-outline"></ion-icon>
+                    Pendiente
+                  </ion-badge>
+                }
                 <ion-badge [color]="getPriorityColor(order.priority)" class="priority-badge">
                   {{ order.priority }}
                 </ion-badge>

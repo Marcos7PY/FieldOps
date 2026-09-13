@@ -8,6 +8,13 @@
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
+  @if (!network.isOnline()) {
+    <div class="offline-banner">
+      <ion-icon name="cloud-offline-outline"></ion-icon>
+      <span>Modo sin conexión. Las modificaciones se encolarán localmente.</span>
+    </div>
+  }
+
   @if (loading()) {
     <div class="center-container">
       <ion-spinner name="crescent"></ion-spinner>
@@ -24,6 +31,12 @@
     <div class="order-detail-container">
       <!-- Status & Priority Banner -->
       <div class="badges-banner">
+        @if (offlineQueue.pendingCount() > 0) {
+          <ion-badge color="tertiary" class="main-badge sync-badge">
+            <ion-icon name="sync-outline"></ion-icon>
+            Pendiente de sincronizar
+          </ion-badge>
+        }
         <ion-badge [color]="getStatusColor(ord.status)" class="main-badge">
           {{ ord.status }}
         </ion-badge>

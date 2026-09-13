@@ -19,16 +19,21 @@ import {
   IonToolbar
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
+import { WorkOrderSummary } from '../../../core/models';
+import { WorkOrderService } from '../../../core/services/work-order.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { NetworkService } from '../../../core/services/network.service';
+import { DatabaseService } from '../../../core/services/database.service';
+import { OfflineQueueService } from '../../../core/services/offline-queue.service';
 import {
   businessOutline,
   calendarOutline,
   chevronForwardOutline,
+  cloudOfflineOutline,
   logOutOutline,
-  refreshOutline
+  refreshOutline,
+  syncOutline
 } from 'ionicons/icons';
-import { WorkOrderSummary } from '../../../core/models';
-import { WorkOrderService } from '../../../core/services/work-order.service';
-import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-orders-list',
@@ -57,6 +62,9 @@ export class OrdersListPage implements OnInit {
   private readonly workOrderService = inject(WorkOrderService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  readonly network = inject(NetworkService);
+  readonly db = inject(DatabaseService);
+  readonly offlineQueue = inject(OfflineQueueService);
 
   readonly orders = signal<WorkOrderSummary[]>([]);
   readonly loading = signal(true);
@@ -69,8 +77,10 @@ export class OrdersListPage implements OnInit {
       businessOutline,
       calendarOutline,
       chevronForwardOutline,
+      cloudOfflineOutline,
       logOutOutline,
-      refreshOutline
+      refreshOutline,
+      syncOutline
     });
   }
 
@@ -78,10 +88,21 @@ export class OrdersListPage implements OnInit {
     this.loadOrders(0, false);
   }
 
-  loadOrders(page: number, append: boolean, event?: CustomEvent): void {
+  async loadOrders(page: number, append: boolean, event?: CustomEvent): Promise<void> {
     if (!append) {
       this.loading.set(true);
       this.errorMessage.set(null);
+    }
+
+    if (!this.network.isOnline()) {
+      const localOrders = await this.db.getLocalOrders();
+      this.orders.set(localOrders as unknown as WorkOrderSummary[]);
+      this.loading.set(false);
+      this.isLastPage.set(true);
+      if (event) {
+        (event.target as HTMLIonRefresherElement | HTMLIonInfiniteScrollElement)?.complete();
+      }
+      return;
     }
 
     this.workOrderService.getAssignedWorkOrders(page, 20).subscribe({
@@ -100,9 +121,16 @@ export class OrdersListPage implements OnInit {
           (event.target as HTMLIonRefresherElement | HTMLIonInfiniteScrollElement)?.complete();
         }
       },
-      error: (err) => {
+      error: async () => {
+        // Network failure fallback to local SQLite
+        const localOrders = await this.db.getLocalOrders();
+        if (localOrders.length > 0) {
+          this.orders.set(localOrders as unknown as WorkOrderSummary[]);
+          this.errorMessage.set(null);
+        } else {
+          this.errorMessage.set('Sin conexión. No hay órdenes locales disponibles.');
+        }
         this.loading.set(false);
-        this.errorMessage.set('Error al cargar las órdenes asignadas');
         if (event) {
           (event.target as HTMLIonRefresherElement | HTMLIonInfiniteScrollElement)?.complete();
         }

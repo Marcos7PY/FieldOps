@@ -24,21 +24,26 @@ import {
   IonToolbar
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
+import { WorkOrder } from '../../../core/models';
+import { WorkOrderService } from '../../../core/services/work-order.service';
+import { CameraService, CapturedPhoto } from '../../../core/services/camera.service';
+import { GeolocationService } from '../../../core/services/geolocation.service';
+import { NetworkService } from '../../../core/services/network.service';
+import { DatabaseService } from '../../../core/services/database.service';
+import { OfflineQueueService } from '../../../core/services/offline-queue.service';
 import {
   businessOutline,
   calendarOutline,
   cameraOutline,
   checkmarkCircleOutline,
+  cloudOfflineOutline,
   cloudUploadOutline,
   navigateOutline,
   callOutline,
   playOutline,
+  syncOutline,
   timeOutline
 } from 'ionicons/icons';
-import { WorkOrder } from '../../../core/models';
-import { WorkOrderService } from '../../../core/services/work-order.service';
-import { CameraService, CapturedPhoto } from '../../../core/services/camera.service';
-import { GeolocationService } from '../../../core/services/geolocation.service';
 
 @Component({
   selector: 'app-order-detail',
@@ -74,6 +79,9 @@ export class OrderDetailPage implements OnInit {
   private readonly alertController = inject(AlertController);
   private readonly cameraService = inject(CameraService);
   private readonly geolocationService = inject(GeolocationService);
+  readonly network = inject(NetworkService);
+  readonly db = inject(DatabaseService);
+  readonly offlineQueue = inject(OfflineQueueService);
 
   readonly order = signal<WorkOrder | null>(null);
   readonly loading = signal(true);
@@ -89,10 +97,12 @@ export class OrderDetailPage implements OnInit {
       calendarOutline,
       cameraOutline,
       checkmarkCircleOutline,
+      cloudOfflineOutline,
       cloudUploadOutline,
       navigateOutline,
       callOutline,
       playOutline,
+      syncOutline,
       timeOutline
     });
   }
@@ -158,31 +168,65 @@ export class OrderDetailPage implements OnInit {
     }
   }
 
-  loadOrderDetail(id: number): void {
+  async loadOrderDetail(id: number): Promise<void> {
     this.loading.set(true);
     this.errorMessage.set(null);
+
+    if (!this.network.isOnline()) {
+      const local = await this.db.getLocalOrderById(id);
+      if (local) {
+        this.order.set(this.mapLocalToWorkOrder(local));
+      } else {
+        this.errorMessage.set('Sin conexión. No hay datos locales para esta orden.');
+      }
+      this.loading.set(false);
+      return;
+    }
 
     this.workOrderService.getWorkOrderById(id).subscribe({
       next: (data) => {
         this.order.set(data);
         this.loading.set(false);
       },
-      error: (err) => {
-        this.loading.set(false);
-        if (err.status === 404) {
+      error: async (err) => {
+        const local = await this.db.getLocalOrderById(id);
+        if (local) {
+          this.order.set(this.mapLocalToWorkOrder(local));
+          this.errorMessage.set(null);
+        } else if (err.status === 404) {
           this.errorMessage.set('La orden solicitada no existe');
         } else {
           this.errorMessage.set('Error al cargar los detalles de la orden');
         }
+        this.loading.set(false);
       }
     });
   }
 
-  startWork(): void {
+  async startWork(): Promise<void> {
     const current = this.order();
     if (!current || this.updatingStatus()) return;
 
     this.updatingStatus.set(true);
+
+    if (!this.network.isOnline()) {
+      await this.offlineQueue.queueStatusChange(
+        current.id,
+        'IN_PROGRESS',
+        'Inicio de labores reportado sin conexión',
+        current.version
+      );
+      this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
+      this.updatingStatus.set(false);
+      const alert = await this.alertController.create({
+        header: 'Guardado Sin Conexión',
+        message: 'El inicio de labores se registró localmente. Se sincronizará automáticamente al recuperar la conexión.',
+        buttons: ['Entendido']
+      });
+      await alert.present();
+      return;
+    }
+
     this.workOrderService.changeStatus(current.id, {
       newStatus: 'IN_PROGRESS',
       notes: 'Inicio de labores reportado desde app móvil'
@@ -192,8 +236,25 @@ export class OrderDetailPage implements OnInit {
         this.updatingStatus.set(false);
       },
       error: async (err) => {
-        this.updatingStatus.set(false);
-        await this.handleStatusError(err);
+        if (err.status === 0) {
+          await this.offlineQueue.queueStatusChange(
+            current.id,
+            'IN_PROGRESS',
+            'Inicio de labores reportado tras pérdida de red',
+            current.version
+          );
+          this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
+          this.updatingStatus.set(false);
+          const alert = await this.alertController.create({
+            header: 'Guardado Local',
+            message: 'Se perdió la conexión. La operación fue guardada en la cola de sincronización.',
+            buttons: ['Entendido']
+          });
+          await alert.present();
+        } else {
+          this.updatingStatus.set(false);
+          await this.handleStatusError(err);
+        }
       }
     });
   }
@@ -240,6 +301,24 @@ export class OrderDetailPage implements OnInit {
       ? `${notes} [GPS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}]`
       : notes;
 
+    if (!this.network.isOnline()) {
+      await this.offlineQueue.queueStatusChange(
+        current.id,
+        'COMPLETED',
+        finalNotes,
+        current.version
+      );
+      this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
+      this.updatingStatus.set(false);
+      const alert = await this.alertController.create({
+        header: 'Guardado Sin Conexión',
+        message: 'El cierre de orden se guardó localmente. Se sincronizará automáticamente al recuperar la conexión.',
+        buttons: ['Entendido']
+      });
+      await alert.present();
+      return;
+    }
+
     this.workOrderService.changeStatus(current.id, {
       newStatus: 'COMPLETED',
       notes: finalNotes
@@ -249,10 +328,57 @@ export class OrderDetailPage implements OnInit {
         this.updatingStatus.set(false);
       },
       error: async (err) => {
-        this.updatingStatus.set(false);
-        await this.handleStatusError(err);
+        if (err.status === 0) {
+          await this.offlineQueue.queueStatusChange(
+            current.id,
+            'COMPLETED',
+            finalNotes,
+            current.version
+          );
+          this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
+          this.updatingStatus.set(false);
+          const alert = await this.alertController.create({
+            header: 'Guardado Local',
+            message: 'Se perdió la conexión. El cierre fue guardado en la cola de sincronización.',
+            buttons: ['Entendido']
+          });
+          await alert.present();
+        } else {
+          this.updatingStatus.set(false);
+          await this.handleStatusError(err);
+        }
       }
     });
+  }
+
+  private mapLocalToWorkOrder(local: any): WorkOrder {
+    return {
+      id: local.id,
+      code: local.code,
+      title: local.title,
+      description: local.description,
+      status: local.status,
+      priority: local.priority,
+      client: {
+        id: local.clientId,
+        businessName: local.clientName,
+        taxId: '',
+        address: local.clientAddress,
+        phone: local.clientPhone,
+        latitude: local.clientLatitude,
+        longitude: local.clientLongitude,
+        active: true
+      },
+      assignedTechnicianId: local.assignedTechnicianId,
+      createdBy: 1,
+      createdAt: local.createdAt,
+      scheduledAt: local.scheduledAt,
+      startedAt: local.startedAt,
+      completedAt: local.completedAt,
+      version: local.version,
+      evidences: [],
+      statusHistory: []
+    };
   }
 
   private async handleStatusError(err: any): Promise<void> {

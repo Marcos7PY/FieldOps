@@ -18,6 +18,7 @@ export interface WorkOrder {
   startedAt?: string | null;
   completedAt?: string | null;
   version: number;
+  syncStatus?: 'SYNCED' | 'PENDING_SYNC' | 'CONFLICT';
   evidences: Evidence[];
   statusHistory: StatusHistory[];
 }
@@ -34,6 +35,7 @@ export interface WorkOrderSummary {
   createdAt: string;
   scheduledAt?: string | null;
   version: number;
+  syncStatus?: 'SYNCED' | 'PENDING_SYNC' | 'CONFLICT';
 }
 
 export interface ChangeStatusRequest {
