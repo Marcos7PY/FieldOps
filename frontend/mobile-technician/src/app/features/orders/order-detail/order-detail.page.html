@@ -1,0 +1,166 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/orders" text="Atrás"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ order() ? order()!.code : 'Detalle de Orden' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  @if (loading()) {
+    <div class="center-container">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p class="loading-text">Cargando detalles...</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="center-container">
+      <p class="error-text">{{ errorMessage() }}</p>
+      <ion-button fill="outline" (click)="loadOrderDetail(order()?.id || 1)">
+        Reintentar
+      </ion-button>
+    </div>
+  } @else if (order(); as ord) {
+    <div class="order-detail-container">
+      <!-- Status & Priority Banner -->
+      <div class="badges-banner">
+        <ion-badge [color]="getStatusColor(ord.status)" class="main-badge">
+          {{ ord.status }}
+        </ion-badge>
+        <ion-badge [color]="getPriorityColor(ord.priority)" class="main-badge">
+          Prioridad: {{ ord.priority }}
+        </ion-badge>
+      </div>
+
+      <!-- General Info Card -->
+      <ion-card class="detail-card">
+        <ion-card-header>
+          <ion-card-subtitle>{{ ord.code }}</ion-card-subtitle>
+          <ion-card-title>{{ ord.title }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          @if (ord.description) {
+            <p class="order-description">{{ ord.description }}</p>
+          }
+
+          <div class="dates-grid">
+            <div class="date-item">
+              <span class="date-label">Creada:</span>
+              <span class="date-value">{{ ord.createdAt | date:'short' }}</span>
+            </div>
+            @if (ord.scheduledAt) {
+              <div class="date-item">
+                <span class="date-label">Programada:</span>
+                <span class="date-value">{{ ord.scheduledAt | date:'short' }}</span>
+              </div>
+            }
+            @if (ord.startedAt) {
+              <div class="date-item">
+                <span class="date-label">Iniciada:</span>
+                <span class="date-value">{{ ord.startedAt | date:'short' }}</span>
+              </div>
+            }
+            @if (ord.completedAt) {
+              <div class="date-item">
+                <span class="date-label">Completada:</span>
+                <span class="date-value">{{ ord.completedAt | date:'short' }}</span>
+              </div>
+            }
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Client Information Card -->
+      <ion-card class="detail-card">
+        <ion-card-header>
+          <ion-card-title class="section-title">
+            <ion-icon name="business-outline"></ion-icon>
+            Cliente
+          </ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <h4 class="client-name">{{ ord.client.businessName }}</h4>
+          <p class="client-tax">NIF/CIF: {{ ord.client.taxId }}</p>
+
+          @if (ord.client.address) {
+            <p class="client-info-row">
+              <ion-icon name="navigate-outline"></ion-icon>
+              <span>{{ ord.client.address }}</span>
+            </p>
+          }
+
+          @if (ord.client.phone) {
+            <p class="client-info-row">
+              <ion-icon name="call-outline"></ion-icon>
+              <a [href]="'tel:' + ord.client.phone" class="phone-link">{{ ord.client.phone }}</a>
+            </p>
+          }
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Action Buttons depending on State -->
+      <div class="action-section">
+        @if (ord.status === 'ASSIGNED') {
+          <ion-button
+            expand="block"
+            color="primary"
+            class="action-btn"
+            [disabled]="updatingStatus()"
+            (click)="startWork()"
+          >
+            @if (updatingStatus()) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon slot="start" name="play-outline"></ion-icon>
+              Iniciar Trabajo
+            }
+          </ion-button>
+        } @else if (ord.status === 'IN_PROGRESS') {
+          <ion-button
+            expand="block"
+            color="success"
+            class="action-btn"
+            [disabled]="updatingStatus()"
+            (click)="promptCompleteWork()"
+          >
+            @if (updatingStatus()) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+              Completar Orden
+            }
+          </ion-button>
+        }
+      </div>
+
+      <!-- Status History -->
+      @if (ord.statusHistory && ord.statusHistory.length > 0) {
+        <ion-card class="detail-card history-card">
+          <ion-card-header>
+            <ion-card-title class="section-title">
+              <ion-icon name="time-outline"></ion-icon>
+              Historial de Estados
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list lines="inset" class="history-list">
+              @for (item of ord.statusHistory; track item.id) {
+                <ion-item class="history-item">
+                  <ion-label>
+                    <div class="history-status-header">
+                      <span class="history-new-status">{{ item.newStatus }}</span>
+                      <span class="history-date">{{ item.changedAt | date:'short' }}</span>
+                    </div>
+                    @if (item.notes) {
+                      <p class="history-notes">{{ item.notes }}</p>
+                    }
+                  </ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      }
+    </div>
+  }
+</ion-content>

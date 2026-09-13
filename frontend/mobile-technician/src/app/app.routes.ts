@@ -13,6 +13,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'orders/:id',
+    loadComponent: () => import('./features/orders/order-detail/order-detail.page').then((m) => m.OrderDetailPage),
+    canActivate: [authGuard],
+  },
+  {
     path: 'home',
     redirectTo: 'orders',
     pathMatch: 'full',

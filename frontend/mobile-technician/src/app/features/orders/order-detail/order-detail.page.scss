@@ -1,0 +1,163 @@
+.center-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 32px 16px;
+
+  .loading-text {
+    margin-top: 16px;
+    color: #64748b;
+  }
+
+  .error-text {
+    color: #ef4444;
+    margin-bottom: 16px;
+  }
+}
+
+.order-detail-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+.badges-banner {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  .main-badge {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+}
+
+.detail-card {
+  margin: 0 0 16px 0;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+
+  .order-description {
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .dates-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
+
+    .date-item {
+      display: flex;
+      flex-direction: column;
+
+      .date-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+
+      .date-value {
+        font-size: 0.85rem;
+        color: #1e293b;
+        font-weight: 600;
+        margin-top: 2px;
+      }
+    }
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
+    color: #1e3a8a;
+  }
+
+  .client-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+  }
+
+  .client-tax {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0 0 12px 0;
+  }
+
+  .client-info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 0.9rem;
+    margin: 6px 0;
+
+    ion-icon {
+      color: #3b82f6;
+      font-size: 1.1rem;
+    }
+
+    .phone-link {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  }
+}
+
+.action-section {
+  margin: 20px 0;
+
+  .action-btn {
+    --border-radius: 12px;
+    height: 52px;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+}
+
+.history-card {
+  .history-list {
+    background: transparent;
+  }
+
+  .history-item {
+    --background: transparent;
+    --padding-start: 0;
+
+    .history-status-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+
+      .history-new-status {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.9rem;
+      }
+
+      .history-date {
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+    }
+
+    .history-notes {
+      font-size: 0.82rem;
+      color: #64748b;
+      margin: 2px 0 0 0;
+    }
+  }
+}
