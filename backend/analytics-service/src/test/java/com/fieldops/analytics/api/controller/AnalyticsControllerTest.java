@@ -1,0 +1,80 @@
+package com.fieldops.analytics.api.controller;
+
+import com.fieldops.analytics.api.dto.DailyMetricsResponse;
+import com.fieldops.analytics.api.dto.TechnicianMetricsResponse;
+import com.fieldops.analytics.application.service.AnalyticsQueryService;
+import com.fieldops.analytics.infrastructure.config.SecurityConfig;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(AnalyticsController.class)
+@Import(SecurityConfig.class)
+class AnalyticsControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private AnalyticsQueryService queryService;
+
+    @MockBean
+    private JwtDecoder jwtDecoder;
+
+    @Test
+    void shouldReturn401WhenNotAuthenticated() throws Exception {
+        mockMvc.perform(get("/api/v1/analytics/metrics/daily"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "TECHNICIAN")
+    void shouldReturn403WhenTechnicianAccessesDailyMetrics() throws Exception {
+        mockMvc.perform(get("/api/v1/analytics/metrics/daily"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERVISOR")
+    void shouldReturnDailyMetricsForSupervisor() throws Exception {
+        LocalDate from = LocalDate.of(2026, 9, 1);
+        LocalDate to = LocalDate.of(2026, 9, 13);
+        DailyMetricsResponse response = new DailyMetricsResponse(from, to, 10L, BigDecimal.valueOf(65.5), List.of());
+
+        when(queryService.getDailyMetrics(any(), any())).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/analytics/metrics/daily")
+                        .param("from", "2026-09-01")
+                        .param("to", "2026-09-13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalOrders").value(10))
+                .andExpect(jsonPath("$.overallAvgDurationMinutes").value(65.5));
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERVISOR")
+    void shouldReturnTechnicianMetricsForSupervisor() throws Exception {
+        TechnicianMetricsResponse response = new TechnicianMetricsResponse(List.of());
+
+        when(queryService.getTechnicianMetrics()).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/analytics/metrics/technicians"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.technicians").isArray());
+    }
+}
