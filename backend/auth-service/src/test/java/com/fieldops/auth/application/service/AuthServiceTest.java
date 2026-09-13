@@ -105,4 +105,55 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(req))
                 .isInstanceOf(InvalidCredentialsException.class);
     }
+
+    @Test
+    void refreshWithValidTokenReturnsNewTokens() {
+        User user = new User();
+        user.setId(2L);
+        user.setUsername("tecnico1");
+        user.setFullName("Field Tech 1");
+        user.setActive(true);
+        user.setRoles(Set.of(new Role("ROLE_TECHNICIAN")));
+
+        com.fieldops.auth.domain.model.RefreshToken oldToken = new com.fieldops.auth.domain.model.RefreshToken();
+        oldToken.setUser(user);
+        oldToken.setRevoked(false);
+
+        when(tokenService.verifyAndGetRefreshToken("valid-refresh-token")).thenReturn(oldToken);
+        when(tokenService.generateAccessToken(user)).thenReturn("new.access.token");
+        when(tokenService.createRefreshToken(user)).thenReturn("new-refresh-token");
+
+        com.fieldops.auth.application.dto.RefreshTokenRequest req =
+                new com.fieldops.auth.application.dto.RefreshTokenRequest("valid-refresh-token");
+        AuthResponse response = authService.refresh(req);
+
+        assertThat(response.accessToken()).isEqualTo("new.access.token");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+        assertThat(oldToken.isRevoked()).isTrue();
+    }
+
+    @Test
+    void logoutRevokesToken() {
+        com.fieldops.auth.application.dto.LogoutRequest req =
+                new com.fieldops.auth.application.dto.LogoutRequest("token-to-revoke");
+        authService.logout(req);
+
+        org.mockito.Mockito.verify(tokenService).revokeRefreshToken("token-to-revoke");
+    }
+
+    @Test
+    void getCurrentUserReturnsUserResponse() {
+        User user = new User();
+        user.setId(3L);
+        user.setUsername("supervisor");
+        user.setFullName("Lead Supervisor");
+        user.setRoles(Set.of(new Role("ROLE_SUPERVISOR")));
+
+        when(userRepository.findByUsername("supervisor")).thenReturn(Optional.of(user));
+
+        com.fieldops.auth.application.dto.UserResponse response = authService.getCurrentUser("supervisor");
+        assertThat(response.username()).isEqualTo("supervisor");
+        assertThat(response.fullName()).isEqualTo("Lead Supervisor");
+        assertThat(response.roles()).containsExactly("ROLE_SUPERVISOR");
+    }
 }

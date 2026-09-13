@@ -24,4 +24,25 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody com.fieldops.auth.application.dto.RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody(required = false) com.fieldops.auth.application.dto.LogoutRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/me")
+    public ResponseEntity<com.fieldops.auth.application.dto.UserResponse> getCurrentUser(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.fieldops.auth.infrastructure.config.UserPrincipal principal
+    ) {
+        if (principal == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(authService.getCurrentUser(principal.username()));
+    }
 }
