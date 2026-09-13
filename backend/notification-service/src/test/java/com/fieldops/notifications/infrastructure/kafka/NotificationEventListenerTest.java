@@ -2,10 +2,8 @@ package com.fieldops.notifications.infrastructure.kafka;
 
 import com.fieldops.events.avro.OrderAssignedPayload;
 import com.fieldops.events.avro.OrderCancelledPayload;
-import com.fieldops.events.avro.OrderCompletedPayload;
-import com.fieldops.events.avro.OrderCreatedPayload;
 import com.fieldops.events.avro.WorkOrderEvent;
-import com.fieldops.notifications.application.service.EmailService;
+import com.fieldops.notifications.application.service.NotificationProcessingService;
 import com.fieldops.notifications.domain.model.NotificationLog;
 import com.fieldops.notifications.infrastructure.persistence.NotificationLogRepository;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -30,12 +28,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationEventListenerTest {
 
     @Mock
-    private EmailService emailService;
+    private NotificationProcessingService notificationProcessingService;
 
     @Mock
     private NotificationLogRepository notificationLogRepository;
@@ -47,19 +46,17 @@ class NotificationEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new NotificationEventListener(emailService, notificationLogRepository);
+        listener = new NotificationEventListener(notificationProcessingService, notificationLogRepository);
     }
 
     @Test
-    void shouldSendEmailAndLogOnOrderAssignedEvent() {
+    void shouldProcessNewEventAndAcknowledge() {
         String eventId = UUID.randomUUID().toString();
-        Instant scheduledAt = Instant.now();
-
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId("42")
                 .setTechnicianEmail("tecnico42@fieldops.com")
                 .setTechnicianName("Carlos Gomez")
-                .setScheduledAt(scheduledAt)
+                .setScheduledAt(Instant.now())
                 .build();
 
         WorkOrderEvent event = WorkOrderEvent.newBuilder()
@@ -76,98 +73,48 @@ class NotificationEventListenerTest {
                 "fieldops.work-orders.events", 0, 0L, "101", event
         );
 
+        when(notificationProcessingService.isAlreadyProcessed(eventId, "notification-group")).thenReturn(false);
+
         listener.onMessage(record, acknowledgment);
 
-        verify(emailService).sendOrderAssignedNotification(
-                eq("tecnico42@fieldops.com"),
-                eq("Carlos Gomez"),
-                eq("ORD-2026-0001"),
-                any(String.class)
-        );
-
-        ArgumentCaptor<NotificationLog> captor = ArgumentCaptor.forClass(NotificationLog.class);
-        verify(notificationLogRepository).save(captor.capture());
-        NotificationLog saved = captor.getValue();
-        assertThat(saved.getEventId()).isEqualTo(eventId);
-        assertThat(saved.getRecipient()).isEqualTo("tecnico42@fieldops.com");
-        assertThat(saved.getStatus()).isEqualTo("SENT");
-
+        verify(notificationProcessingService).processAndRecord(eq(event), eq("notification-group"));
         verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void shouldSendEmailAndLogOnOrderCompletedEvent() {
+    void shouldSkipAlreadyProcessedEventAndAcknowledge() {
         String eventId = UUID.randomUUID().toString();
-        Instant completedAt = Instant.now();
-
-        OrderCompletedPayload payload = OrderCompletedPayload.newBuilder()
+        OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId("42")
-                .setCompletedAt(completedAt)
-                .setDurationMinutes(85)
-                .setEvidenceCount(3)
+                .setTechnicianEmail("tecnico42@fieldops.com")
+                .setTechnicianName("Carlos Gomez")
+                .setScheduledAt(Instant.now())
                 .build();
 
         WorkOrderEvent event = WorkOrderEvent.newBuilder()
                 .setEventId(eventId)
-                .setEventType("ORDER_COMPLETED")
-                .setOrderId(102L)
-                .setOrderCode("ORD-2026-0002")
+                .setEventType("ORDER_ASSIGNED")
+                .setOrderId(101L)
+                .setOrderCode("ORD-2026-0001")
                 .setOccurredAt(Instant.now())
                 .setSchemaVersion(1)
                 .setPayload(payload)
                 .build();
 
         ConsumerRecord<String, WorkOrderEvent> record = new ConsumerRecord<>(
-                "fieldops.work-orders.events", 0, 1L, "102", event
+                "fieldops.work-orders.events", 0, 1L, "101", event
         );
+
+        when(notificationProcessingService.isAlreadyProcessed(eventId, "notification-group")).thenReturn(true);
 
         listener.onMessage(record, acknowledgment);
 
-        verify(emailService).sendOrderCompletedNotification(
-                eq("supervisor@fieldops.com"),
-                eq("ORD-2026-0002"),
-                eq("42"),
-                eq(85),
-                eq(3),
-                any(String.class)
-        );
-
-        ArgumentCaptor<NotificationLog> captor = ArgumentCaptor.forClass(NotificationLog.class);
-        verify(notificationLogRepository).save(captor.capture());
-        NotificationLog saved = captor.getValue();
-        assertThat(saved.getEventId()).isEqualTo(eventId);
-        assertThat(saved.getRecipient()).isEqualTo("supervisor@fieldops.com");
-        assertThat(saved.getStatus()).isEqualTo("SENT");
-
+        verify(notificationProcessingService, never()).processAndRecord(any(), any());
         verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void shouldIgnoreUnrelatedEventsWithoutSendingEmail() {
-        WorkOrderEvent event = WorkOrderEvent.newBuilder()
-                .setEventId(UUID.randomUUID().toString())
-                .setEventType("ORDER_CREATED")
-                .setOrderId(103L)
-                .setOrderCode("ORD-2026-0003")
-                .setOccurredAt(Instant.now())
-                .setSchemaVersion(1)
-                .setPayload(new OrderCreatedPayload("T", 1L, "C", "LOW", "user"))
-                .build();
-
-        ConsumerRecord<String, WorkOrderEvent> record = new ConsumerRecord<>(
-                "fieldops.work-orders.events", 0, 2L, "103", event
-        );
-
-        listener.onMessage(record, acknowledgment);
-
-        verify(emailService, never()).sendOrderAssignedNotification(any(), any(), any(), any());
-        verify(emailService, never()).sendOrderCompletedNotification(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(), any());
-        verify(notificationLogRepository, never()).save(any());
-        verify(acknowledgment).acknowledge();
-    }
-
-    @Test
-    void shouldRecordFailedStatusWhenEmailFails() {
+    void shouldNotAcknowledgeAndPropagateExceptionWhenProcessingFails() {
         String eventId = UUID.randomUUID().toString();
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId("42")
@@ -186,8 +133,9 @@ class NotificationEventListenerTest {
                 .setPayload(payload)
                 .build();
 
+        when(notificationProcessingService.isAlreadyProcessed(eventId, "notification-group")).thenReturn(false);
         doThrow(new RuntimeException("Mail server down"))
-                .when(emailService).sendOrderAssignedNotification(any(), any(), any(), any());
+                .when(notificationProcessingService).processAndRecord(any(), any());
 
         ConsumerRecord<String, WorkOrderEvent> record = new ConsumerRecord<>(
                 "fieldops.work-orders.events", 0, 3L, "104", event
@@ -197,10 +145,36 @@ class NotificationEventListenerTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Mail server down");
 
+        verify(acknowledgment, never()).acknowledge();
+    }
+
+    @Test
+    void shouldHandleDltAndLogFailure() {
+        String eventId = UUID.randomUUID().toString();
+        WorkOrderEvent event = WorkOrderEvent.newBuilder()
+                .setEventId(eventId)
+                .setEventType("ORDER_ASSIGNED")
+                .setOrderId(105L)
+                .setOrderCode("ORD-2026-0005")
+                .setOccurredAt(Instant.now())
+                .setSchemaVersion(1)
+                .setPayload(new OrderCancelledPayload("supervisor", "Test DLT"))
+                .build();
+
+        ConsumerRecord<String, WorkOrderEvent> record = new ConsumerRecord<>(
+                "fieldops.work-orders.events-dlt", 0, 5L, "105", event
+        );
+
+        listener.handleDlt(record, "fieldops.work-orders.events-dlt", "Persistent failure after retries", acknowledgment);
+
         ArgumentCaptor<NotificationLog> captor = ArgumentCaptor.forClass(NotificationLog.class);
         verify(notificationLogRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo("FAILED");
-        verify(acknowledgment, never()).acknowledge();
+        NotificationLog saved = captor.getValue();
+        assertThat(saved.getEventId()).isEqualTo(eventId);
+        assertThat(saved.getStatus()).isEqualTo("DLT_FAILED");
+        assertThat(saved.getRecipient()).isEqualTo("DLT");
+
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -224,9 +198,10 @@ class NotificationEventListenerTest {
                 0, 0, "105", event, headers, java.util.Optional.empty()
         );
 
+        when(notificationProcessingService.isAlreadyProcessed(any(), any())).thenReturn(false);
+
         listener.onMessage(record, acknowledgment);
 
-        // After processing, MDC is cleaned up
         assertThat(MDC.get("traceId")).isNull();
         verify(acknowledgment).acknowledge();
     }

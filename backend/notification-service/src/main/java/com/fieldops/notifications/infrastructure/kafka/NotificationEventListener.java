@@ -1,17 +1,21 @@
 package com.fieldops.notifications.infrastructure.kafka;
 
-import com.fieldops.events.avro.OrderAssignedPayload;
-import com.fieldops.events.avro.OrderCompletedPayload;
 import com.fieldops.events.avro.WorkOrderEvent;
-import com.fieldops.notifications.application.service.EmailService;
+import com.fieldops.notifications.application.service.NotificationProcessingService;
 import com.fieldops.notifications.domain.model.NotificationLog;
 import com.fieldops.notifications.infrastructure.persistence.NotificationLogRepository;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -22,21 +26,30 @@ public class NotificationEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
     public static final String TRACE_ID_HEADER = "X-Trace-Id";
+    public static final String CONSUMER_GROUP = "notification-group";
 
-    private final EmailService emailService;
+    private final NotificationProcessingService notificationProcessingService;
     private final NotificationLogRepository notificationLogRepository;
 
     public NotificationEventListener(
-            EmailService emailService,
+            NotificationProcessingService notificationProcessingService,
             NotificationLogRepository notificationLogRepository
     ) {
-        this.emailService = emailService;
+        this.notificationProcessingService = notificationProcessingService;
         this.notificationLogRepository = notificationLogRepository;
     }
 
+    @RetryableTopic(
+            attempts = "4",
+            backoff = @Backoff(delay = 1000, multiplier = 4.0, maxDelay = 16000),
+            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+            retryTopicSuffix = "-retry",
+            dltTopicSuffix = "-dlt",
+            autoCreateTopics = "true"
+    )
     @KafkaListener(
             topics = "fieldops.work-orders.events",
-            groupId = "notification-group",
+            groupId = CONSUMER_GROUP,
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void onMessage(ConsumerRecord<String, WorkOrderEvent> record, Acknowledgment acknowledgment) {
@@ -53,68 +66,44 @@ public class NotificationEventListener {
         }
 
         try {
-            processEvent(event);
+            String eventId = event.getEventId();
+            if (notificationProcessingService.isAlreadyProcessed(eventId, CONSUMER_GROUP)) {
+                log.info("Event {} already processed by {}, discarding duplicate", eventId, CONSUMER_GROUP);
+                acknowledgment.acknowledge();
+                return;
+            }
+
+            notificationProcessingService.processAndRecord(event, CONSUMER_GROUP);
             acknowledgment.acknowledge();
         } finally {
             MDC.remove("traceId");
         }
     }
 
-    public void processEvent(WorkOrderEvent event) {
-        String eventType = event.getEventType();
-        log.info("Received event {} for order {} (type={})", event.getEventId(), event.getOrderId(), eventType);
+    @DltHandler
+    public void handleDlt(
+            ConsumerRecord<String, WorkOrderEvent> record,
+            @Header(name = KafkaHeaders.RECEIVED_TOPIC, required = false) String topic,
+            @Header(name = KafkaHeaders.EXCEPTION_MESSAGE, required = false) String exceptionMessage,
+            Acknowledgment acknowledgment
+    ) {
+        WorkOrderEvent event = record != null ? record.value() : null;
+        String eventId = event != null ? event.getEventId() : "unknown";
+        log.error("Event {} deposited in DLT topic {}. Reason: {}", eventId, topic, exceptionMessage);
 
-        if ("ORDER_ASSIGNED".equals(eventType) && event.getPayload() instanceof OrderAssignedPayload payload) {
-            handleOrderAssigned(event, payload);
-        } else if ("ORDER_COMPLETED".equals(eventType) && event.getPayload() instanceof OrderCompletedPayload payload) {
-            handleOrderCompleted(event, payload);
-        } else {
-            log.debug("Event type {} ignored by notification service", eventType);
-        }
-    }
-
-    private void handleOrderAssigned(WorkOrderEvent event, OrderAssignedPayload payload) {
-        String recipient = payload.getTechnicianEmail();
-        String technicianName = payload.getTechnicianName();
-        String scheduledAt = payload.getScheduledAt() != null ? payload.getScheduledAt().toString() : "No especificada";
-
-        try {
-            emailService.sendOrderAssignedNotification(recipient, technicianName, event.getOrderCode(), scheduledAt);
-            logNotification(event.getEventId(), recipient, "Nueva orden asignada: " + event.getOrderCode(), "SENT");
-        } catch (Exception e) {
-            logNotification(event.getEventId(), recipient, "Nueva orden asignada: " + event.getOrderCode(), "FAILED");
-            throw e;
-        }
-    }
-
-    private void handleOrderCompleted(WorkOrderEvent event, OrderCompletedPayload payload) {
-        String recipient = "supervisor@fieldops.com";
-        String completedAt = payload.getCompletedAt() != null ? payload.getCompletedAt().toString() : "No especificada";
-
-        try {
-            emailService.sendOrderCompletedNotification(
-                    recipient,
-                    event.getOrderCode(),
-                    payload.getTechnicianId(),
-                    payload.getDurationMinutes(),
-                    payload.getEvidenceCount(),
-                    completedAt
+        if (event != null) {
+            NotificationLog dltLog = new NotificationLog(
+                    eventId,
+                    "DLT",
+                    "Event deposited in DLT: " + topic,
+                    LocalDateTime.now(),
+                    "DLT_FAILED"
             );
-            logNotification(event.getEventId(), recipient, "Orden completada: " + event.getOrderCode(), "SENT");
-        } catch (Exception e) {
-            logNotification(event.getEventId(), recipient, "Orden completada: " + event.getOrderCode(), "FAILED");
-            throw e;
+            notificationLogRepository.save(dltLog);
         }
-    }
 
-    private void logNotification(String eventId, String recipient, String subject, String status) {
-        NotificationLog notificationLog = new NotificationLog(
-                eventId,
-                recipient,
-                subject,
-                LocalDateTime.now(),
-                status
-        );
-        notificationLogRepository.save(notificationLog);
+        if (acknowledgment != null) {
+            acknowledgment.acknowledge();
+        }
     }
 }
