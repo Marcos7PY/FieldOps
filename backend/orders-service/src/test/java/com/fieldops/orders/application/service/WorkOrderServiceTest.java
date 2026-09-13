@@ -1,14 +1,21 @@
 package com.fieldops.orders.application.service;
 
+import com.fieldops.orders.application.dto.AssignWorkOrderRequest;
+import com.fieldops.orders.application.dto.ChangeStatusRequest;
 import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
+import com.fieldops.orders.domain.exception.AccessDeniedException;
+import com.fieldops.orders.domain.exception.BusinessRuleViolationException;
+import com.fieldops.orders.domain.exception.InvalidStatusTransitionException;
 import com.fieldops.orders.domain.exception.ResourceNotFoundException;
+import com.fieldops.orders.domain.exception.VersionConflictException;
 import com.fieldops.orders.domain.model.Client;
 import com.fieldops.orders.domain.model.OrderStatus;
 import com.fieldops.orders.domain.model.Priority;
 import com.fieldops.orders.domain.model.WorkOrder;
 import com.fieldops.orders.domain.model.WorkOrderStatusHistory;
 import com.fieldops.orders.infrastructure.persistence.ClientRepository;
+import com.fieldops.orders.infrastructure.persistence.WorkOrderEvidenceRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderStatusHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +44,9 @@ class WorkOrderServiceTest {
     private ClientRepository clientRepository;
 
     @Mock
+    private WorkOrderEvidenceRepository evidenceRepository;
+
+    @Mock
     private WorkOrderStatusHistoryRepository historyRepository;
 
     @Mock
@@ -47,7 +57,33 @@ class WorkOrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new WorkOrderService(workOrderRepository, clientRepository, historyRepository, codeGenerator, mapper);
+        service = new WorkOrderService(
+                workOrderRepository,
+                clientRepository,
+                evidenceRepository,
+                historyRepository,
+                codeGenerator,
+                mapper
+        );
+    }
+
+    private WorkOrder createSampleOrder(Long id, OrderStatus status, Long technicianId, Long version) {
+        Client client = new Client();
+        client.setId(1L);
+        client.setBusinessName("Acme Corp");
+
+        WorkOrder order = new WorkOrder();
+        order.setId(id);
+        order.setCode("WO-2026-00001");
+        order.setTitle("Sample Order");
+        order.setStatus(status);
+        order.setPriority(Priority.MEDIUM);
+        order.setClient(client);
+        order.setAssignedTechnicianId(technicianId);
+        order.setCreatedBy(1L);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setVersion(version);
+        return order;
     }
 
     @Test
@@ -133,5 +169,101 @@ class WorkOrderServiceTest {
         assertThatThrownBy(() -> service.createWorkOrder(request, 100L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("999");
+    }
+
+    @Test
+    void assignWorkOrderTransitionsFromDraftToAssigned() {
+        WorkOrder order = createSampleOrder(1L, OrderStatus.DRAFT, null, 0L);
+        when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        AssignWorkOrderRequest request = new AssignWorkOrderRequest(42L, LocalDateTime.now().plusHours(4));
+        WorkOrderResponse response = service.assignWorkOrder(1L, request, 99L, 0L);
+
+        assertThat(response.status()).isEqualTo(OrderStatus.ASSIGNED);
+        assertThat(response.assignedTechnicianId()).isEqualTo(42L);
+        assertThat(order.getStatusHistory()).isNotEmpty();
+    }
+
+    @Test
+    void assignWorkOrderWithVersionConflictThrowsException() {
+        WorkOrder order = createSampleOrder(1L, OrderStatus.DRAFT, null, 1L);
+        when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        AssignWorkOrderRequest request = new AssignWorkOrderRequest(42L, null);
+
+        assertThatThrownBy(() -> service.assignWorkOrder(1L, request, 99L, 0L))
+                .isInstanceOf(VersionConflictException.class);
+    }
+
+    @Test
+    void changeStatusAssignedToInProgressSetsStartedAt() {
+        WorkOrder order = createSampleOrder(2L, OrderStatus.ASSIGNED, 42L, 0L);
+        when(workOrderRepository.findById(2L)).thenReturn(Optional.of(order));
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.IN_PROGRESS, "Started on site");
+        WorkOrderResponse response = service.changeStatus(2L, request, 42L, false, 0L);
+
+        assertThat(response.status()).isEqualTo(OrderStatus.IN_PROGRESS);
+        assertThat(response.startedAt()).isNotNull();
+    }
+
+    @Test
+    void changeStatusInProgressToCompletedWithEvidenceSetsCompletedAt() {
+        WorkOrder order = createSampleOrder(3L, OrderStatus.IN_PROGRESS, 42L, 0L);
+        when(workOrderRepository.findById(3L)).thenReturn(Optional.of(order));
+        when(evidenceRepository.existsByWorkOrderId(3L)).thenReturn(true);
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.COMPLETED, "Work done");
+        WorkOrderResponse response = service.changeStatus(3L, request, 42L, false, 0L);
+
+        assertThat(response.status()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(response.completedAt()).isNotNull();
+    }
+
+    @Test
+    void changeStatusInProgressToCompletedWithoutEvidenceThrowsException() {
+        WorkOrder order = createSampleOrder(4L, OrderStatus.IN_PROGRESS, 42L, 0L);
+        when(workOrderRepository.findById(4L)).thenReturn(Optional.of(order));
+        when(evidenceRepository.existsByWorkOrderId(4L)).thenReturn(false);
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.COMPLETED, "Work done");
+
+        assertThatThrownBy(() -> service.changeStatus(4L, request, 42L, false, 0L))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessageContaining("evidence");
+    }
+
+    @Test
+    void changeStatusInvalidTransitionThrowsException() {
+        WorkOrder order = createSampleOrder(5L, OrderStatus.DRAFT, null, 0L);
+        when(workOrderRepository.findById(5L)).thenReturn(Optional.of(order));
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.COMPLETED, "Illegal skip");
+
+        assertThatThrownBy(() -> service.changeStatus(5L, request, 1L, true, 0L))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+    }
+
+    @Test
+    void technicianCannotModifyOtherTechnicianOrder() {
+        WorkOrder order = createSampleOrder(6L, OrderStatus.ASSIGNED, 42L, 0L);
+        when(workOrderRepository.findById(6L)).thenReturn(Optional.of(order));
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.IN_PROGRESS, "Unauthorized attempt");
+
+        assertThatThrownBy(() -> service.changeStatus(6L, request, 999L, false, 0L))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void technicianCannotCancelOrder() {
+        WorkOrder order = createSampleOrder(7L, OrderStatus.ASSIGNED, 42L, 0L);
+        when(workOrderRepository.findById(7L)).thenReturn(Optional.of(order));
+
+        ChangeStatusRequest request = new ChangeStatusRequest(OrderStatus.CANCELLED, "Technician trying to cancel");
+
+        assertThatThrownBy(() -> service.changeStatus(7L, request, 42L, false, 0L))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessageContaining("supervisors");
     }
 }

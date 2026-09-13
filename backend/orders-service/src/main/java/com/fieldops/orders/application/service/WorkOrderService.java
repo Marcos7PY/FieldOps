@@ -1,19 +1,27 @@
 package com.fieldops.orders.application.service;
 
+import com.fieldops.orders.application.dto.AssignWorkOrderRequest;
+import com.fieldops.orders.application.dto.ChangeStatusRequest;
 import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
+import com.fieldops.orders.domain.exception.BusinessRuleViolationException;
+import com.fieldops.orders.domain.exception.InvalidStatusTransitionException;
 import com.fieldops.orders.domain.exception.ResourceNotFoundException;
+import com.fieldops.orders.domain.exception.VersionConflictException;
 import com.fieldops.orders.domain.model.Client;
 import com.fieldops.orders.domain.model.OrderStatus;
 import com.fieldops.orders.domain.model.WorkOrder;
 import com.fieldops.orders.domain.model.WorkOrderStatusHistory;
 import com.fieldops.orders.infrastructure.persistence.ClientRepository;
+import com.fieldops.orders.infrastructure.persistence.WorkOrderEvidenceRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderStatusHistoryRepository;
+import com.fieldops.orders.domain.exception.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -21,6 +29,7 @@ public class WorkOrderService {
 
     private final WorkOrderRepository workOrderRepository;
     private final ClientRepository clientRepository;
+    private final WorkOrderEvidenceRepository evidenceRepository;
     private final WorkOrderStatusHistoryRepository historyRepository;
     private final WorkOrderCodeGenerator codeGenerator;
     private final WorkOrderMapper mapper;
@@ -28,12 +37,14 @@ public class WorkOrderService {
     public WorkOrderService(
             WorkOrderRepository workOrderRepository,
             ClientRepository clientRepository,
+            WorkOrderEvidenceRepository evidenceRepository,
             WorkOrderStatusHistoryRepository historyRepository,
             WorkOrderCodeGenerator codeGenerator,
             WorkOrderMapper mapper
     ) {
         this.workOrderRepository = workOrderRepository;
         this.clientRepository = clientRepository;
+        this.evidenceRepository = evidenceRepository;
         this.historyRepository = historyRepository;
         this.codeGenerator = codeGenerator;
         this.mapper = mapper;
@@ -77,5 +88,118 @@ public class WorkOrderService {
         savedOrder.getStatusHistory().add(history);
 
         return mapper.toResponse(savedOrder);
+    }
+
+    public WorkOrderResponse assignWorkOrder(Long id, AssignWorkOrderRequest request, Long supervisorId, Long expectedVersion) {
+        WorkOrder order = findOrderById(id);
+        verifyOptimisticLock(order, expectedVersion);
+
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessRuleViolationException("Cannot reassign a terminal order in status " + order.getStatus());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        OrderStatus previousStatus = order.getStatus();
+        boolean statusChanged = false;
+
+        if (order.getStatus() == OrderStatus.DRAFT) {
+            if (!order.getStatus().canTransitionTo(OrderStatus.ASSIGNED)) {
+                throw new InvalidStatusTransitionException(order.getStatus(), OrderStatus.ASSIGNED);
+            }
+            order.setStatus(OrderStatus.ASSIGNED);
+            statusChanged = true;
+        }
+
+        order.setAssignedTechnicianId(request.technicianId());
+        if (request.scheduledAt() != null) {
+            order.setScheduledAt(request.scheduledAt());
+        }
+
+        if (statusChanged) {
+            WorkOrderStatusHistory history = new WorkOrderStatusHistory();
+            history.setWorkOrder(order);
+            history.setPreviousStatus(previousStatus);
+            history.setNewStatus(OrderStatus.ASSIGNED);
+            history.setChangedBy(supervisorId);
+            history.setChangedAt(now);
+            history.setNotes("Technician assigned");
+            historyRepository.save(history);
+            order.getStatusHistory().add(history);
+        }
+
+        return mapper.toResponse(order);
+    }
+
+    public WorkOrderResponse changeStatus(
+            Long id,
+            ChangeStatusRequest request,
+            Long userId,
+            boolean isSupervisor,
+            Long expectedVersion
+    ) {
+        WorkOrder order = findOrderById(id);
+        verifyOptimisticLock(order, expectedVersion);
+
+        if (!isSupervisor) {
+            if (order.getAssignedTechnicianId() == null || !order.getAssignedTechnicianId().equals(userId)) {
+                throw new AccessDeniedException("Technician can only modify orders assigned to them");
+            }
+        }
+
+        if (request.newStatus() == OrderStatus.CANCELLED && !isSupervisor) {
+            throw new BusinessRuleViolationException("Only supervisors can cancel work orders");
+        }
+
+        if (!order.getStatus().canTransitionTo(request.newStatus())) {
+            throw new InvalidStatusTransitionException(order.getStatus(), request.newStatus());
+        }
+
+        if (request.newStatus() == OrderStatus.ASSIGNED && order.getAssignedTechnicianId() == null) {
+            throw new BusinessRuleViolationException("Cannot transition to ASSIGNED without an assigned technician");
+        }
+
+        if (request.newStatus() == OrderStatus.COMPLETED) {
+            boolean hasEvidence = evidenceRepository.existsByWorkOrderId(id)
+                    || (order.getEvidences() != null && !order.getEvidences().isEmpty());
+            if (!hasEvidence) {
+                throw new BusinessRuleViolationException("Cannot complete work order without at least one evidence registered");
+            }
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(request.newStatus());
+
+        if (request.newStatus() == OrderStatus.IN_PROGRESS) {
+            order.setStartedAt(now);
+        } else if (request.newStatus() == OrderStatus.COMPLETED) {
+            order.setCompletedAt(now);
+        }
+
+        WorkOrderStatusHistory history = new WorkOrderStatusHistory();
+        history.setWorkOrder(order);
+        history.setPreviousStatus(previousStatus);
+        history.setNewStatus(request.newStatus());
+        history.setChangedBy(userId);
+        history.setChangedAt(now);
+        history.setNotes(request.notes());
+        historyRepository.save(history);
+        order.getStatusHistory().add(history);
+
+        return mapper.toResponse(order);
+    }
+
+    public WorkOrder findOrderById(Long id) {
+        return workOrderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Work order not found with id: " + id));
+    }
+
+    private void verifyOptimisticLock(WorkOrder order, Long expectedVersion) {
+        if (expectedVersion != null && !Objects.equals(order.getVersion(), expectedVersion)) {
+            throw new VersionConflictException(String.format(
+                    "Work order %d has version %d, but expected version was %d",
+                    order.getId(), order.getVersion(), expectedVersion
+            ));
+        }
     }
 }
