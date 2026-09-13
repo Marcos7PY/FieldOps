@@ -11,7 +11,7 @@ export class ClientsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/clients`;
 
-  getClients(page: number = 0, size: number = 50): Observable<Page<Client>> {
+  getClients(page = 0, size = 50): Observable<Page<Client>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());

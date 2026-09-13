@@ -18,10 +18,8 @@ import { AuthService, WorkOrdersService } from '../../../core/services';
 import {
   AssignWorkOrderRequest,
   ChangeStatusRequest,
-  Evidence,
   OrderStatus,
   Priority,
-  StatusHistory,
   WorkOrder
 } from '../../../core/models';
 

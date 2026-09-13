@@ -177,9 +177,11 @@
                     <span class="tech-name">Técnico #{{ tech.technicianId }}</span>
                   </div>
                   <div class="tech-badges">
-                    <span class="tech-duration-badge" *ngIf="tech.avgDurationMinutes !== null && tech.avgDurationMinutes !== undefined">
-                      {{ tech.avgDurationMinutes | number:'1.1-1' }} min prom.
-                    </span>
+                    @if (tech.avgDurationMinutes !== null && tech.avgDurationMinutes !== undefined) {
+                      <span class="tech-duration-badge">
+                        {{ tech.avgDurationMinutes | number:'1.1-1' }} min prom.
+                      </span>
+                    }
                     <span class="tech-total-count">{{ tech.completedOrders + tech.inProgressOrders + tech.assignedOrders }} órdenes</span>
                   </div>
                 </div>
