@@ -47,3 +47,17 @@ pipelines:
           - step: *backend-build
           - step: *frontend-build
       - step: *sonar-analysis
+  branches:
+    develop:
+      - step: *backend-build
+      - step: *sonar-analysis
+      - step:
+          name: Build container images
+          services:
+            - docker
+          script:
+            - export TAG=$BITBUCKET_COMMIT_SHORT
+            - |
+              for svc in api-gateway auth-service orders-service notification-service analytics-service; do
+                docker build -t "fieldops/$svc:$TAG" "backend/$svc"
+              done
