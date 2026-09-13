@@ -1,0 +1,41 @@
+﻿image: maven:3.9-eclipse-temurin-21
+
+definitions:
+  caches:
+    maven: ~/.m2/repository
+    npmweb: frontend/web-admin/node_modules
+    npmmobile: frontend/mobile-technician/node_modules
+  services:
+    docker:
+      memory: 3072
+  steps:
+    - step: &backend-build
+        name: Backend build and test
+        caches:
+          - maven
+        services:
+          - docker
+        script:
+          - cd backend
+          - mvn -B clean verify
+        artifacts:
+          - "**/target/surefire-reports/**"
+          - "**/target/site/jacoco/**"
+    - step: &frontend-build
+        name: Frontend build and test
+        image: node:20
+        caches:
+          - npmweb
+        script:
+          - cd frontend/web-admin
+          - npm ci
+          - npm run lint
+          - npm run build -- --configuration production
+          - npm run test -- --watch=false --browsers=ChromeHeadless
+
+pipelines:
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *backend-build
+          - step: *frontend-build
