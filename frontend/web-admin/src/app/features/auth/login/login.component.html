@@ -1,0 +1,55 @@
+<div class="login-wrapper">
+  <mat-card class="login-card">
+    <mat-card-header class="login-header">
+      <div class="brand">
+        <mat-icon class="brand-icon" color="primary">engineering</mat-icon>
+        <span class="brand-name">FieldOps</span>
+      </div>
+      <mat-card-subtitle class="login-subtitle">Sistema de Gestión de Órdenes de Trabajo</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (errorMessage()) {
+        <div class="error-banner" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Usuario</mat-label>
+          <input matInput formControlName="username" autocomplete="username" placeholder="supervisor">
+          <mat-icon matPrefix>person</mat-icon>
+          @if (loginForm.controls.username.hasError('required') && loginForm.controls.username.touched) {
+            <mat-error>El usuario es requerido</mat-error>
+          }
+          @if (loginForm.controls.username.hasError('minlength') && loginForm.controls.username.touched) {
+            <mat-error>El usuario debe tener al menos 3 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" autocomplete="current-password">
+          <mat-icon matPrefix>lock</mat-icon>
+          <button mat-icon-button matSuffix type="button" (click)="togglePasswordVisibility()" [attr.aria-label]="'Ocultar contraseña'">
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (loginForm.controls.password.hasError('required') && loginForm.controls.password.touched) {
+            <mat-error>La contraseña es requerida</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" type="submit" class="submit-button" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20" class="spinner"></mat-spinner>
+            <span>Iniciando sesión...</span>
+          } @else {
+            <span>Ingresar</span>
+          }
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
