@@ -1,0 +1,123 @@
+{
+  "type": "record",
+  "name": "WorkOrderEvent",
+  "namespace": "com.fieldops.events.avro",
+  "doc": "Envelope para eventos de dominio de ordenes de trabajo en FieldOps",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Identificador unico universal del evento (UUID)"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Tipo de evento de la orden"
+    },
+    {
+      "name": "orderId",
+      "type": "long",
+      "doc": "Identificador unico de la orden"
+    },
+    {
+      "name": "orderCode",
+      "type": "string",
+      "doc": "Codigo de negocio de la orden"
+    },
+    {
+      "name": "occurredAt",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Marca de tiempo del suceso en milisegundos UTC"
+    },
+    {
+      "name": "schemaVersion",
+      "type": "int",
+      "default": 1,
+      "doc": "Version del esquema"
+    },
+    {
+      "name": "payload",
+      "doc": "Carga util especifica segun el tipo de evento",
+      "type": [
+        {
+          "type": "record",
+          "name": "OrderCreatedPayload",
+          "namespace": "com.fieldops.events.avro",
+          "doc": "Payload del evento ORDER_CREATED",
+          "fields": [
+            { "name": "title", "type": "string" },
+            { "name": "clientId", "type": "long" },
+            { "name": "clientName", "type": "string" },
+            { "name": "priority", "type": "string" },
+            { "name": "createdBy", "type": "string" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "OrderAssignedPayload",
+          "namespace": "com.fieldops.events.avro",
+          "doc": "Payload del evento ORDER_ASSIGNED",
+          "fields": [
+            { "name": "technicianId", "type": "string" },
+            { "name": "technicianEmail", "type": "string" },
+            { "name": "technicianName", "type": "string" },
+            {
+              "name": "scheduledAt",
+              "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+              }
+            }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "OrderStartedPayload",
+          "namespace": "com.fieldops.events.avro",
+          "doc": "Payload del evento ORDER_STARTED",
+          "fields": [
+            { "name": "technicianId", "type": "string" },
+            {
+              "name": "startedAt",
+              "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+              }
+            }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "OrderCompletedPayload",
+          "namespace": "com.fieldops.events.avro",
+          "doc": "Payload del evento ORDER_COMPLETED",
+          "fields": [
+            { "name": "technicianId", "type": "string" },
+            {
+              "name": "completedAt",
+              "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+              }
+            },
+            { "name": "durationMinutes", "type": "int" },
+            { "name": "evidenceCount", "type": "int" }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "OrderCancelledPayload",
+          "namespace": "com.fieldops.events.avro",
+          "doc": "Payload del evento ORDER_CANCELLED",
+          "fields": [
+            { "name": "cancelledBy", "type": "string" },
+            { "name": "reason", "type": "string" }
+          ]
+        }
+      ]
+    }
+  ]
+}

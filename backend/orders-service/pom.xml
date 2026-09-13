@@ -18,6 +18,7 @@
 
     <properties>
         <java.version>21</java.version>
+        <avro.version>1.12.0</avro.version>
     </properties>
 
     <dependencies>
@@ -97,6 +98,11 @@
             <artifactId>mssqlserver</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -104,6 +110,26 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <version>${avro.version}</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>schema</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${project.basedir}/../../contracts/avro</sourceDirectory>
+                            <outputDirectory>${project.build.directory}/generated-sources/avro</outputDirectory>
+                            <stringType>String</stringType>
+                            <createSetters>true</createSetters>
+                            <fieldVisibility>private</fieldVisibility>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -115,6 +141,7 @@
                         <exclude>com/fieldops/orders/infrastructure/**</exclude>
                         <exclude>com/fieldops/orders/api/**</exclude>
                         <exclude>com/fieldops/orders/OrdersApplication*</exclude>
+                        <exclude>com/fieldops/events/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

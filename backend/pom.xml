@@ -13,6 +13,8 @@
         <module>api-gateway</module>
         <module>auth-service</module>
         <module>orders-service</module>
+        <module>notification-service</module>
+        <module>analytics-service</module>
     </modules>
 
     <properties>
@@ -20,6 +22,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring.boot.version>3.3.4</spring.boot.version>
+        <avro.version>1.12.0</avro.version>
     </properties>
 
     <dependencyManagement>
@@ -30,6 +33,11 @@
                 <version>${spring.boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>${avro.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -49,6 +57,26 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring.boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.avro</groupId>
+                    <artifactId>avro-maven-plugin</artifactId>
+                    <version>${avro.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>schema</goal>
+                            </goals>
+                            <configuration>
+                                <sourceDirectory>${project.basedir}/../../contracts/avro</sourceDirectory>
+                                <outputDirectory>${project.build.directory}/generated-sources/avro</outputDirectory>
+                                <stringType>String</stringType>
+                                <createSetters>true</createSetters>
+                                <fieldVisibility>private</fieldVisibility>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
