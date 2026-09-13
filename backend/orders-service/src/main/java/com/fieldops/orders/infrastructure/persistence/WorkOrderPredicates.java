@@ -46,10 +46,11 @@ public final class WorkOrderPredicates {
             }
 
             if (search != null && !search.isBlank()) {
-                String pattern = "%" + search.toLowerCase().trim() + "%";
-                Predicate titleMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), pattern);
-                Predicate codeMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), pattern);
-                Predicate descMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), pattern);
+                String trimmed = search.trim();
+                String lowerPattern = "%" + trimmed.toLowerCase() + "%";
+                Predicate titleMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), lowerPattern);
+                Predicate codeMatch = criteriaBuilder.like(root.get("code"), trimmed.toUpperCase() + "%");
+                Predicate descMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), lowerPattern);
                 predicates.add(criteriaBuilder.or(titleMatch, codeMatch, descMatch));
             }
 
