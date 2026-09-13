@@ -11,17 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "work_order_status_history")
-@Getter
-@Setter
-@NoArgsConstructor
 public class WorkOrderStatusHistory {
 
     @Id
@@ -48,4 +42,63 @@ public class WorkOrderStatusHistory {
 
     @Column(name = "notes", length = 500)
     private String notes;
+
+    public WorkOrderStatusHistory() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public WorkOrder getWorkOrder() {
+        return workOrder;
+    }
+
+    public void setWorkOrder(WorkOrder workOrder) {
+        this.workOrder = workOrder;
+    }
+
+    public OrderStatus getPreviousStatus() {
+        return previousStatus;
+    }
+
+    public void setPreviousStatus(OrderStatus previousStatus) {
+        this.previousStatus = previousStatus;
+    }
+
+    public OrderStatus getNewStatus() {
+        return newStatus;
+    }
+
+    public void setNewStatus(OrderStatus newStatus) {
+        this.newStatus = newStatus;
+    }
+
+    public Long getChangedBy() {
+        return changedBy;
+    }
+
+    public void setChangedBy(Long changedBy) {
+        this.changedBy = changedBy;
+    }
+
+    public LocalDateTime getChangedAt() {
+        return changedAt;
+    }
+
+    public void setChangedAt(LocalDateTime changedAt) {
+        this.changedAt = changedAt;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 }
