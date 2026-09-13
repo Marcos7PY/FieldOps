@@ -34,10 +34,8 @@ export class SyncService {
   }
 
   private setupAutoSync(): void {
-    // Check initial state
     this.wasOffline = !this.network.getCurrentStatus();
 
-    // Monitor connectivity changes
     setInterval(() => {
       const currentlyOnline = this.network.getCurrentStatus();
       if (this.wasOffline && currentlyOnline) {
@@ -78,7 +76,6 @@ export class SyncService {
         result.conflictCount++;
       } else {
         result.errorCount++;
-        // If network failed again, break loop
         if (!this.network.getCurrentStatus()) {
           break;
         }
@@ -117,7 +114,6 @@ export class SyncService {
         this.workOrderService.changeStatus(op.orderId, { newStatus, notes }, version)
       );
 
-      // On success, delete pending op and update local mirror with server version
       await this.db.deletePendingOperation(op.id);
       await this.db.saveLocalOrders([updated]);
       return 'SUCCESS';

@@ -122,7 +122,6 @@ export class OrdersListPage implements OnInit {
         }
       },
       error: async () => {
-        // Network failure fallback to local SQLite
         const localOrders = await this.db.getLocalOrders();
         if (localOrders.length > 0) {
           this.orders.set(localOrders as unknown as WorkOrderSummary[]);

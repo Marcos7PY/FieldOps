@@ -280,7 +280,6 @@ export class OrderDetailPage implements OnInit {
         {
           name: 'notes',
           type: 'textarea',
-          placeholder: 'Detalle del trabajo realizado...',
         },
       ],
       buttons: [

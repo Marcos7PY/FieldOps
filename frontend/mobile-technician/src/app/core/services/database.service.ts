@@ -187,9 +187,7 @@ export class DatabaseService {
             localOrder.syncStatus,
             localOrder.updatedAt,
           ]);
-        } catch {
-          // Ignored if db run fails, memory copy exists
-        }
+        } catch {}
       }
     }
   }
@@ -203,9 +201,7 @@ export class DatabaseService {
         if (res.values && res.values.length > 0) {
           return res.values.map(this.mapRowToLocalOrder);
         }
-      } catch {
-        // Fall back to memory
-      }
+      } catch {}
     }
 
     return Array.from(this.memoryOrders.values()).sort(
@@ -222,9 +218,7 @@ export class DatabaseService {
         if (res.values && res.values.length > 0) {
           return this.mapRowToLocalOrder(res.values[0]);
         }
-      } catch {
-        // Fall back to memory
-      }
+      } catch {}
     }
 
     return this.memoryOrders.get(id) || null;
@@ -255,9 +249,7 @@ export class DatabaseService {
           WHERE id = ?
         `;
         await this.db.run(sql, [newStatus, now, id]);
-      } catch {
-        // Fall back to memory
-      }
+      } catch {}
     }
   }
 
@@ -295,9 +287,7 @@ export class DatabaseService {
         if (res.changes?.lastId) {
           op.id = res.changes.lastId;
         }
-      } catch {
-        // Handled via memory
-      }
+      } catch {}
     }
 
     return op;
@@ -314,9 +304,7 @@ export class DatabaseService {
         if (res.values) {
           return res.values.map(this.mapRowToPendingOp);
         }
-      } catch {
-        // Handled via memory
-      }
+      } catch {}
     }
 
     return Array.from(this.memoryOperations.values())
@@ -347,9 +335,7 @@ export class DatabaseService {
           WHERE id = ?
         `;
         await this.db.run(sql, [status, lastError || null, id]);
-      } catch {
-        // Memory copy updated
-      }
+      } catch {}
     }
   }
 
@@ -361,9 +347,7 @@ export class DatabaseService {
     if (this.db) {
       try {
         await this.db.run('DELETE FROM pending_operation WHERE id = ?', [id]);
-      } catch {
-        // Handled via memory
-      }
+      } catch {}
     }
   }
 

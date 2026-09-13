@@ -104,7 +104,6 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldEnforceTechnicianOwnershipRuleInServiceLayer() throws Exception {
-        // 1. Create client and work order as supervisor
         CreateClientRequest clientReq = new CreateClientRequest(
                 "Ownership Test Client",
                 "TAX-OWN-001",
@@ -135,7 +134,6 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
         long orderId = objectMapper.readTree(or.getResponse().getContentAsString()).get("id").asLong();
         long version = objectMapper.readTree(or.getResponse().getContentAsString()).get("version").asLong();
 
-        // 2. Assign to technician 100
         AssignWorkOrderRequest assignReq = new AssignWorkOrderRequest(100L, LocalDateTime.now().plusDays(1));
         MvcResult ar = mockMvc.perform(patch("/api/v1/work-orders/{id}/assign", orderId)
                         .with(supervisor(1L))
@@ -146,13 +144,11 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
                 .andReturn();
         version = objectMapper.readTree(ar.getResponse().getContentAsString()).get("version").asLong();
 
-        // 3. Technician 200 (not assigned) tries to view order -> 403 Forbidden
         mockMvc.perform(get("/api/v1/work-orders/{id}", orderId)
                         .with(technician(200L)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.title").value("Access Denied"));
 
-        // 4. Technician 200 tries to update status -> 403 Forbidden
         ChangeStatusRequest startReq = new ChangeStatusRequest(OrderStatus.IN_PROGRESS, "Attacking order");
         mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
                         .with(technician(200L))
@@ -162,14 +158,12 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.title").value("Access Denied"));
 
-        // 5. Technician 100 (assigned) views order -> 200 OK
         mockMvc.perform(get("/api/v1/work-orders/{id}", orderId)
                         .with(technician(100L)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderId))
                 .andExpect(jsonPath("$.assignedTechnicianId").value(100));
 
-        // 6. Technician 100 tries to cancel order -> 422 Unprocessable Entity (rule: only supervisors can cancel)
         ChangeStatusRequest cancelReq = new ChangeStatusRequest(OrderStatus.CANCELLED, "Technician cancelling");
         mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
                         .with(technician(100L))
