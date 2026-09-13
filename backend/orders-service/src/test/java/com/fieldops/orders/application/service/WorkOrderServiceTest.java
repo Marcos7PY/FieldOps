@@ -305,4 +305,29 @@ class WorkOrderServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(12L);
     }
+    @Test
+    void getMetricsCalculatesTotalsAndAggregates() {
+        when(workOrderRepository.count()).thenReturn(10L);
+        when(workOrderRepository.countGroupedByStatus()).thenReturn(java.util.List.of(
+                new Object[]{OrderStatus.COMPLETED, 6L},
+                new Object[]{OrderStatus.IN_PROGRESS, 4L}
+        ));
+        when(workOrderRepository.countGroupedByPriority()).thenReturn(java.util.List.of(
+                new Object[]{Priority.HIGH, 7L},
+                new Object[]{Priority.MEDIUM, 3L}
+        ));
+        LocalDateTime now = LocalDateTime.now();
+        when(workOrderRepository.findCompletedDurations()).thenReturn(java.util.List.of(
+                new Object[]{now.minusMinutes(60), now},
+                new Object[]{now.minusMinutes(120), now}
+        ));
+
+        com.fieldops.orders.application.dto.WorkOrderMetricsResponse metrics = service.getMetrics();
+
+        assertThat(metrics.totalOrders()).isEqualTo(10L);
+        assertThat(metrics.ordersByStatus().get(OrderStatus.COMPLETED)).isEqualTo(6L);
+        assertThat(metrics.ordersByStatus().get(OrderStatus.DRAFT)).isEqualTo(0L);
+        assertThat(metrics.ordersByPriority().get(Priority.HIGH)).isEqualTo(7L);
+        assertThat(metrics.avgDurationMinutes()).isEqualByComparingTo("90.00");
+    }
 }

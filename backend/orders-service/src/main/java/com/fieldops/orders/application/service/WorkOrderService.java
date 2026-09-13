@@ -6,6 +6,13 @@ import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
 import com.fieldops.orders.application.dto.WorkOrderSummaryResponse;
 import com.fieldops.orders.application.dto.PageResponse;
+import com.fieldops.orders.application.dto.WorkOrderMetricsResponse;
+import com.fieldops.orders.domain.model.Priority;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.util.EnumMap;
+import java.util.Map;
 import com.fieldops.orders.domain.exception.BusinessRuleViolationException;
 import com.fieldops.orders.domain.exception.InvalidStatusTransitionException;
 import com.fieldops.orders.domain.exception.ResourceNotFoundException;
@@ -233,6 +240,52 @@ public class WorkOrderService {
             }
         }
         return mapper.toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public WorkOrderMetricsResponse getMetrics() {
+        long totalOrders = workOrderRepository.count();
+
+        Map<OrderStatus, Long> ordersByStatus = new EnumMap<>(OrderStatus.class);
+        for (OrderStatus status : OrderStatus.values()) {
+            ordersByStatus.put(status, 0L);
+        }
+        for (Object[] row : workOrderRepository.countGroupedByStatus()) {
+            OrderStatus status = (OrderStatus) row[0];
+            Long count = (Long) row[1];
+            ordersByStatus.put(status, count);
+        }
+
+        Map<Priority, Long> ordersByPriority = new EnumMap<>(Priority.class);
+        for (Priority priority : Priority.values()) {
+            ordersByPriority.put(priority, 0L);
+        }
+        for (Object[] row : workOrderRepository.countGroupedByPriority()) {
+            Priority priority = (Priority) row[0];
+            Long count = (Long) row[1];
+            ordersByPriority.put(priority, count);
+        }
+
+        java.util.List<Object[]> completed = workOrderRepository.findCompletedDurations();
+        BigDecimal avgDuration = null;
+        if (!completed.isEmpty()) {
+            long totalMinutes = 0;
+            int count = 0;
+            for (Object[] row : completed) {
+                LocalDateTime start = (LocalDateTime) row[0];
+                LocalDateTime end = (LocalDateTime) row[1];
+                if (start != null && end != null && !end.isBefore(start)) {
+                    totalMinutes += Duration.between(start, end).toMinutes();
+                    count++;
+                }
+            }
+            if (count > 0) {
+                avgDuration = BigDecimal.valueOf((double) totalMinutes / count)
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
+        }
+
+        return new WorkOrderMetricsResponse(totalOrders, ordersByStatus, ordersByPriority, avgDuration);
     }
 
     public WorkOrder findOrderById(Long id) {

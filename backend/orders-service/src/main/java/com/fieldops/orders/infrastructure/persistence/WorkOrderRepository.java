@@ -16,4 +16,13 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, Long>, Jpa
 
     @Query("SELECT COUNT(w) FROM WorkOrder w WHERE w.code LIKE :prefix%")
     long countByCodePrefix(@Param("prefix") String prefix);
+
+    @Query("SELECT w.status, COUNT(w) FROM WorkOrder w GROUP BY w.status")
+    java.util.List<Object[]> countGroupedByStatus();
+
+    @Query("SELECT w.priority, COUNT(w) FROM WorkOrder w GROUP BY w.priority")
+    java.util.List<Object[]> countGroupedByPriority();
+
+    @Query("SELECT w.startedAt, w.completedAt FROM WorkOrder w WHERE w.status = com.fieldops.orders.domain.model.OrderStatus.COMPLETED AND w.startedAt IS NOT NULL AND w.completedAt IS NOT NULL")
+    java.util.List<Object[]> findCompletedDurations();
 }
