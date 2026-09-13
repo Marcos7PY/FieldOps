@@ -1,5 +1,57 @@
 <div class="layout-container">
-  <main class="layout-content">
-    <router-outlet></router-outlet>
-  </main>
+  <mat-toolbar color="primary" class="main-toolbar">
+    <button mat-icon-button (click)="toggleSidebar()" aria-label="Alternar menú lateral">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <span class="app-title">FieldOps</span>
+    <span class="toolbar-spacer"></span>
+
+    <div class="user-section">
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-menu-trigger">
+        <mat-icon>account_circle</mat-icon>
+        <span class="user-name">{{ authService.currentUser()?.fullName || authService.currentUser()?.username || 'Usuario' }}</span>
+        @if (authService.userRole(); as role) {
+          <span class="user-role-badge">{{ role.replace('ROLE_', '') }}</span>
+        }
+        <mat-icon>arrow_drop_down</mat-icon>
+      </button>
+
+      <mat-menu #userMenu="matMenu" xPosition="before">
+        <div class="user-menu-header">
+          <div class="user-menu-fullname">{{ authService.currentUser()?.fullName }}</div>
+          <div class="user-menu-username">&#64;{{ authService.currentUser()?.username }}</div>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </div>
+  </mat-toolbar>
+
+  <mat-sidenav-container class="sidenav-container">
+    <mat-sidenav [opened]="sidebarOpened()" mode="side" class="main-sidenav">
+      <mat-nav-list>
+        <a mat-list-item routerLink="/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+          <mat-icon matListItemIcon>dashboard</mat-icon>
+          <span matListItemTitle>Dashboard</span>
+        </a>
+        <a mat-list-item routerLink="/work-orders" routerLinkActive="active-link">
+          <mat-icon matListItemIcon>assignment</mat-icon>
+          <span matListItemTitle>Órdenes de Trabajo</span>
+        </a>
+        <a mat-list-item routerLink="/clients" routerLinkActive="active-link">
+          <mat-icon matListItemIcon>business</mat-icon>
+          <span matListItemTitle>Clientes</span>
+        </a>
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="content-area">
+      <main class="page-body">
+        <router-outlet></router-outlet>
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </div>
