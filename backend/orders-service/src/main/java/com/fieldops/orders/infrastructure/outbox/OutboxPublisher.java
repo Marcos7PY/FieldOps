@@ -67,19 +67,29 @@ public class OutboxPublisher {
         WorkOrderEvent avroEvent = serializer.fromJson(event.getPayload());
         String partitionKey = String.valueOf(event.getAggregateId());
 
-        ProducerRecord<String, Object> record = new ProducerRecord<>(TOPIC, partitionKey, avroEvent);
-
         String traceId = MDC.get("traceId");
-        if (traceId != null && !traceId.isBlank()) {
-            record.headers().add(TRACE_ID_HEADER, traceId.getBytes(StandardCharsets.UTF_8));
+        boolean mdcGenerated = false;
+        if (traceId == null || traceId.isBlank()) {
+            traceId = java.util.UUID.randomUUID().toString();
+            MDC.put("traceId", traceId);
+            mdcGenerated = true;
         }
 
-        kafkaOperations.send(record);
+        ProducerRecord<String, Object> record = new ProducerRecord<>(TOPIC, partitionKey, avroEvent);
 
-        event.setPublishedAt(LocalDateTime.now());
-        outboxEventRepository.save(event);
+        try {
+            record.headers().add(TRACE_ID_HEADER, traceId.getBytes(StandardCharsets.UTF_8));
+            kafkaOperations.send(record);
 
-        log.info("Published outbox event {} (type={}, orderId={}) to topic {}",
-                event.getEventId(), event.getEventType(), partitionKey, TOPIC);
+            event.setPublishedAt(LocalDateTime.now());
+            outboxEventRepository.save(event);
+
+            log.info("Published outbox event {} (type={}, orderId={}) to topic {}",
+                    event.getEventId(), event.getEventType(), partitionKey, TOPIC);
+        } finally {
+            if (mdcGenerated) {
+                MDC.remove("traceId");
+            }
+        }
     }
 }

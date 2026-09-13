@@ -124,4 +124,23 @@ class OutboxPublisherTest {
 
         verify(kafkaOperations, never()).send(any(ProducerRecord.class));
     }
+
+    @Test
+    void shouldGenerateTraceIdWhenNotPresentInMDC() {
+        OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
+
+        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
+                .thenReturn(List.of(e1));
+        when(kafkaOperations.send(any(ProducerRecord.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        publisher.publishPendingEvents();
+
+        ArgumentCaptor<ProducerRecord<String, Object>> recordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(kafkaOperations).send(recordCaptor.capture());
+
+        var header = recordCaptor.getValue().headers().lastHeader("X-Trace-Id");
+        assertThat(header).isNotNull();
+        assertThat(new String(header.value())).isNotBlank();
+    }
 }
