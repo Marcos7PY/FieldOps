@@ -5,5 +5,17 @@ public enum OrderStatus {
     ASSIGNED,
     IN_PROGRESS,
     COMPLETED,
-    CANCELLED
+    CANCELLED;
+
+    public boolean canTransitionTo(OrderStatus target) {
+        if (target == null) {
+            return false;
+        }
+        return switch (this) {
+            case DRAFT -> target == ASSIGNED || target == CANCELLED;
+            case ASSIGNED -> target == IN_PROGRESS || target == CANCELLED;
+            case IN_PROGRESS -> target == COMPLETED || target == CANCELLED;
+            case COMPLETED, CANCELLED -> false;
+        };
+    }
 }
