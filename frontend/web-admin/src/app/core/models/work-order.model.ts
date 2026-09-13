@@ -1,0 +1,56 @@
+import { OrderStatus, Priority } from './order-status.model';
+import { Client } from './client.model';
+import { Evidence } from './evidence.model';
+import { StatusHistory } from './status-history.model';
+
+export interface WorkOrder {
+  id: number;
+  code: string;
+  title: string;
+  description?: string | null;
+  status: OrderStatus;
+  priority: Priority;
+  client: Client;
+  assignedTechnicianId?: number | null;
+  createdBy: number;
+  createdAt: string;
+  scheduledAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  version: number;
+  evidences: Evidence[];
+  statusHistory: StatusHistory[];
+}
+
+export interface WorkOrderSummary {
+  id: number;
+  code: string;
+  title: string;
+  status: OrderStatus;
+  priority: Priority;
+  clientId: number;
+  clientName: string;
+  assignedTechnicianId?: number | null;
+  createdAt: string;
+  scheduledAt?: string | null;
+  version: number;
+}
+
+export interface CreateWorkOrderRequest {
+  title: string;
+  description?: string | null;
+  priority: Priority;
+  clientId: number;
+  assignedTechnicianId?: number | null;
+  scheduledAt?: string | null;
+}
+
+export interface AssignWorkOrderRequest {
+  technicianId: number;
+  scheduledAt?: string | null;
+}
+
+export interface ChangeStatusRequest {
+  newStatus: OrderStatus;
+  notes?: string | null;
+}
