@@ -30,10 +30,13 @@ spring:
       group-id: analytics-group
       enable-auto-commit: false
       auto-offset-reset: earliest
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:2000}
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         specific.avro.reader: true
+    listener:
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
     properties:
       schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8090}
 

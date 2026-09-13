@@ -29,6 +29,12 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.properties.schema.registry.url:http://localhost:8090}")
     private String schemaRegistryUrl;
 
+    @Value("${spring.kafka.consumer.max-poll-records:2000}")
+    private int maxPollRecords;
+
+    @Value("${spring.kafka.listener.concurrency:3}")
+    private int listenerConcurrency;
+
     @Bean
     public ConsumerFactory<String, WorkOrderEvent> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -38,6 +44,7 @@ public class KafkaConsumerConfig {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
         props.put("schema.registry.url", schemaRegistryUrl);
         props.put("specific.avro.reader", true);
 
@@ -51,6 +58,7 @@ public class KafkaConsumerConfig {
         ConcurrentKafkaListenerContainerFactory<String, WorkOrderEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
+        factory.setConcurrency(listenerConcurrency);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         return factory;
     }
