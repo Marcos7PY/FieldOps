@@ -38,6 +38,7 @@ import {
 import { WorkOrder } from '../../../core/models';
 import { WorkOrderService } from '../../../core/services/work-order.service';
 import { CameraService, CapturedPhoto } from '../../../core/services/camera.service';
+import { GeolocationService } from '../../../core/services/geolocation.service';
 
 @Component({
   selector: 'app-order-detail',
@@ -72,6 +73,7 @@ export class OrderDetailPage implements OnInit {
   private readonly workOrderService = inject(WorkOrderService);
   private readonly alertController = inject(AlertController);
   private readonly cameraService = inject(CameraService);
+  private readonly geolocationService = inject(GeolocationService);
 
   readonly order = signal<WorkOrder | null>(null);
   readonly loading = signal(true);
@@ -107,7 +109,7 @@ export class OrderDetailPage implements OnInit {
     this.uploadProgress.set(null);
   }
 
-  uploadEvidence(): void {
+  async uploadEvidence(): Promise<void> {
     const photo = this.currentPhoto();
     const ord = this.order();
     if (!photo || !ord || this.uploadingEvidence()) return;
@@ -115,9 +117,16 @@ export class OrderDetailPage implements OnInit {
     this.uploadingEvidence.set(true);
     this.uploadProgress.set(0);
 
+    const coords = await this.geolocationService.getCurrentPosition();
+    const metadata = {
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
+      capturedAt: new Date().toISOString()
+    };
+
     const filename = `evidence-${Date.now()}.${photo.format || 'jpg'}`;
 
-    this.workOrderService.uploadEvidenceWithProgress(ord.id, photo.blob, filename).subscribe({
+    this.workOrderService.uploadEvidenceWithProgress(ord.id, photo.blob, filename, metadata).subscribe({
       next: (state) => {
         this.uploadProgress.set(state.progress);
         if (state.response) {
@@ -220,14 +229,20 @@ export class OrderDetailPage implements OnInit {
     await alert.present();
   }
 
-  private completeWork(notes: string): void {
+  private async completeWork(notes: string): Promise<void> {
     const current = this.order();
     if (!current) return;
 
     this.updatingStatus.set(true);
+
+    const coords = await this.geolocationService.getCurrentPosition();
+    const finalNotes = coords
+      ? `${notes} [GPS: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}]`
+      : notes;
+
     this.workOrderService.changeStatus(current.id, {
       newStatus: 'COMPLETED',
-      notes
+      notes: finalNotes
     }, current.version).subscribe({
       next: (updated) => {
         this.order.set(updated);
