@@ -1,0 +1,8 @@
+import { Routes } from '@angular/router';
+
+export const WORK_ORDERS_ROUTES: Routes = [
+  {
+    path: '',
+    loadComponent: () => import('./work-orders-list/work-orders-list.component').then(m => m.WorkOrdersListComponent),
+  },
+];
