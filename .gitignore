@@ -1,0 +1,13 @@
+﻿target/
+build/
+node_modules/
+dist/
+www/
+.angular/
+android/
+ios/
+*.log
+.env
+application-local.yml
+keys/
+uploads/
