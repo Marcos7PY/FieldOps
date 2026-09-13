@@ -25,6 +25,9 @@
         <avro.version>1.12.0</avro.version>
         <confluent.version>7.6.1</confluent.version>
         <shedlock.version>5.16.0</shedlock.version>
+        <sonar.host.url>${env.SONAR_HOST_URL:http://localhost:9000}</sonar.host.url>
+        <sonar.token>${env.SONAR_TOKEN:}</sonar.token>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <repositories>
@@ -107,6 +110,11 @@
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>5.0.0.4389</version>
                 </plugin>
             </plugins>
         </pluginManagement>
