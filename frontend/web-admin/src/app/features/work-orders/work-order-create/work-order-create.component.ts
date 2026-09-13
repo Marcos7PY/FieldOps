@@ -25,10 +25,10 @@ import { Client, CreateWorkOrderRequest, Priority } from '../../../core/models';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   templateUrl: './work-order-create.component.html',
-  styleUrl: './work-order-create.component.scss'
+  styleUrl: './work-order-create.component.scss',
 })
 export class WorkOrderCreateComponent implements OnInit {
   private readonly fb = inject(FormBuilder).nonNullable;
@@ -45,7 +45,7 @@ export class WorkOrderCreateComponent implements OnInit {
     { label: 'Baja', value: 'LOW' },
     { label: 'Media', value: 'MEDIUM' },
     { label: 'Alta', value: 'HIGH' },
-    { label: 'Crítica', value: 'CRITICAL' }
+    { label: 'Crítica', value: 'CRITICAL' },
   ];
 
   readonly createForm = this.fb.group({
@@ -54,7 +54,7 @@ export class WorkOrderCreateComponent implements OnInit {
     priority: ['MEDIUM' as Priority, [Validators.required]],
     clientId: [null as number | null, [Validators.required]],
     assignedTechnicianId: [null as number | null],
-    scheduledAt: ['']
+    scheduledAt: [''],
   });
 
   ngOnInit(): void {
@@ -70,7 +70,7 @@ export class WorkOrderCreateComponent implements OnInit {
       },
       error: () => {
         this.loadingClients.set(false);
-      }
+      },
     });
   }
 
@@ -86,7 +86,8 @@ export class WorkOrderCreateComponent implements OnInit {
     const raw = this.createForm.getRawValue();
     let scheduledAtFormatted: string | null = null;
     if (raw.scheduledAt) {
-      scheduledAtFormatted = raw.scheduledAt.length === 16 ? `${raw.scheduledAt}:00` : raw.scheduledAt;
+      scheduledAtFormatted =
+        raw.scheduledAt.length === 16 ? `${raw.scheduledAt}:00` : raw.scheduledAt;
     }
 
     const payload: CreateWorkOrderRequest = {
@@ -95,7 +96,7 @@ export class WorkOrderCreateComponent implements OnInit {
       priority: raw.priority,
       clientId: raw.clientId as number,
       assignedTechnicianId: raw.assignedTechnicianId ? Number(raw.assignedTechnicianId) : null,
-      scheduledAt: scheduledAtFormatted
+      scheduledAt: scheduledAtFormatted,
     };
 
     this.workOrdersService.createWorkOrder(payload).subscribe({
@@ -129,7 +130,7 @@ export class WorkOrderCreateComponent implements OnInit {
         } else {
           this.generalError.set('Ocurrió un error inesperado al conectar con el servidor.');
         }
-      }
+      },
     });
   }
 }

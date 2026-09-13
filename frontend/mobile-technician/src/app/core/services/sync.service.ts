@@ -15,7 +15,7 @@ export interface SyncResult {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SyncService {
   private readonly db = inject(DatabaseService);
@@ -61,7 +61,7 @@ export class SyncService {
       totalProcessed: operations.length,
       successCount: 0,
       conflictCount: 0,
-      errorCount: 0
+      errorCount: 0,
     };
 
     if (operations.length === 0) {
@@ -106,7 +106,9 @@ export class SyncService {
     }
   }
 
-  private async processStatusChange(op: PendingOperation): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
+  private async processStatusChange(
+    op: PendingOperation
+  ): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
     const payload = JSON.parse(op.payloadJson);
     const { newStatus, notes, version } = payload;
 
@@ -144,7 +146,9 @@ export class SyncService {
     }
   }
 
-  private async processEvidenceUpload(op: PendingOperation): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
+  private async processEvidenceUpload(
+    op: PendingOperation
+  ): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
     const payload = JSON.parse(op.payloadJson);
     const { fileBase64, filename, metadata } = payload;
 
@@ -188,7 +192,7 @@ export class SyncService {
         message: `Sincronización: ${result.successCount} sincronizadas, ${result.conflictCount} con conflicto marcado para revisión manual.`,
         duration: 5000,
         color: 'warning',
-        position: 'top'
+        position: 'top',
       });
       await toast.present();
     } else if (result.successCount > 0) {
@@ -196,7 +200,7 @@ export class SyncService {
         message: `Sincronización completada: ${result.successCount} operaciones enviadas con éxito.`,
         duration: 3500,
         color: 'success',
-        position: 'top'
+        position: 'top',
       });
       await toast.present();
     }

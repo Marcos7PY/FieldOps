@@ -11,10 +11,10 @@
 
 <ion-content [fullscreen]="true" class="ion-padding-bottom">
   @if (!network.isOnline()) {
-    <div class="offline-banner">
-      <ion-icon name="cloud-offline-outline"></ion-icon>
-      <span>Modo sin conexión. Cambios locales pendientes de sincronización.</span>
-    </div>
+  <div class="offline-banner">
+    <ion-icon name="cloud-offline-outline"></ion-icon>
+    <span>Modo sin conexión. Cambios locales pendientes de sincronización.</span>
+  </div>
   }
 
   <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
@@ -23,69 +23,69 @@
   </ion-refresher>
 
   @if (loading() && orders().length === 0) {
-    <div class="center-container">
-      <ion-spinner name="crescent"></ion-spinner>
-      <p class="loading-text">Cargando órdenes asignadas...</p>
-    </div>
+  <div class="center-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p class="loading-text">Cargando órdenes asignadas...</p>
+  </div>
   } @else if (errorMessage() && orders().length === 0) {
-    <div class="center-container">
-      <p class="error-text">{{ errorMessage() }}</p>
-      <ion-button fill="outline" (click)="loadOrders(0, false)">
-        <ion-icon slot="start" name="refresh-outline"></ion-icon>
-        Reintentar
-      </ion-button>
-    </div>
+  <div class="center-container">
+    <p class="error-text">{{ errorMessage() }}</p>
+    <ion-button fill="outline" (click)="loadOrders(0, false)">
+      <ion-icon slot="start" name="refresh-outline"></ion-icon>
+      Reintentar
+    </ion-button>
+  </div>
   } @else if (orders().length === 0) {
-    <div class="center-container">
-      <p class="empty-title">Sin órdenes asignadas</p>
-      <p class="empty-subtitle">No tienes servicios pendientes en este momento.</p>
-    </div>
+  <div class="center-container">
+    <p class="empty-title">Sin órdenes asignadas</p>
+    <p class="empty-subtitle">No tienes servicios pendientes en este momento.</p>
+  </div>
   } @else {
-    <ion-list class="orders-list">
-      @for (order of orders(); track order.id) {
-        <ion-item button (click)="goToDetail(order.id)" detail="false" class="order-item">
-          <div class="order-card-content">
-            <div class="order-header-row">
-              <span class="order-code">{{ order.code }}</span>
-              <div class="badges-row">
-                @if (order.syncStatus === 'PENDING_SYNC') {
-                  <ion-badge color="tertiary" class="sync-badge">
-                    <ion-icon name="sync-outline"></ion-icon>
-                    Pendiente
-                  </ion-badge>
-                }
-                <ion-badge [color]="getPriorityColor(order.priority)" class="priority-badge">
-                  {{ order.priority }}
-                </ion-badge>
-                <ion-badge [color]="getStatusColor(order.status)" class="status-badge">
-                  {{ order.status }}
-                </ion-badge>
-              </div>
-            </div>
-
-            <h3 class="order-title">{{ order.title }}</h3>
-
-            <div class="order-details-row">
-              <div class="detail-item">
-                <ion-icon name="business-outline"></ion-icon>
-                <span>{{ order.clientName }}</span>
-              </div>
-              @if (order.scheduledAt) {
-                <div class="detail-item">
-                  <ion-icon name="calendar-outline"></ion-icon>
-                  <span>{{ order.scheduledAt | date:'short' }}</span>
-                </div>
-              }
-            </div>
+  <ion-list class="orders-list">
+    @for (order of orders(); track order.id) {
+    <ion-item button (click)="goToDetail(order.id)" detail="false" class="order-item">
+      <div class="order-card-content">
+        <div class="order-header-row">
+          <span class="order-code">{{ order.code }}</span>
+          <div class="badges-row">
+            @if (order.syncStatus === 'PENDING_SYNC') {
+            <ion-badge color="tertiary" class="sync-badge">
+              <ion-icon name="sync-outline"></ion-icon>
+              Pendiente
+            </ion-badge>
+            }
+            <ion-badge [color]="getPriorityColor(order.priority)" class="priority-badge">
+              {{ order.priority }}
+            </ion-badge>
+            <ion-badge [color]="getStatusColor(order.status)" class="status-badge">
+              {{ order.status }}
+            </ion-badge>
           </div>
-          <ion-icon slot="end" name="chevron-forward-outline" class="chevron-icon"></ion-icon>
-        </ion-item>
-      }
-    </ion-list>
+        </div>
 
-    <ion-infinite-scroll (ionInfinite)="onInfiniteScroll($event)" [disabled]="isLastPage()">
-      <ion-infinite-scroll-content loadingSpinner="crescent" loadingText="Cargando más órdenes...">
-      </ion-infinite-scroll-content>
-    </ion-infinite-scroll>
+        <h3 class="order-title">{{ order.title }}</h3>
+
+        <div class="order-details-row">
+          <div class="detail-item">
+            <ion-icon name="business-outline"></ion-icon>
+            <span>{{ order.clientName }}</span>
+          </div>
+          @if (order.scheduledAt) {
+          <div class="detail-item">
+            <ion-icon name="calendar-outline"></ion-icon>
+            <span>{{ order.scheduledAt | date:'short' }}</span>
+          </div>
+          }
+        </div>
+      </div>
+      <ion-icon slot="end" name="chevron-forward-outline" class="chevron-icon"></ion-icon>
+    </ion-item>
+    }
+  </ion-list>
+
+  <ion-infinite-scroll (ionInfinite)="onInfiniteScroll($event)" [disabled]="isLastPage()">
+    <ion-infinite-scroll-content loadingSpinner="crescent" loadingText="Cargando más órdenes...">
+    </ion-infinite-scroll-content>
+  </ion-infinite-scroll>
   }
 </ion-content>

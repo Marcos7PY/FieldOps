@@ -24,10 +24,17 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Título de la orden</mat-label>
-            <input matInput formControlName="title" placeholder="Ej. Reparación de transformador principal" maxlength="150">
+            <input
+              matInput
+              formControlName="title"
+              placeholder="Ej. Reparación de transformador principal"
+              maxlength="150"
+            />
             <mat-icon matPrefix>assignment</mat-icon>
             <mat-hint align="end">{{ createForm.controls.title.value.length }} / 150</mat-hint>
-            @if (createForm.controls.title.hasError('required') && createForm.controls.title.touched) {
+            @if (
+              createForm.controls.title.hasError('required') && createForm.controls.title.touched
+            ) {
               <mat-error>El título es obligatorio</mat-error>
             }
             @if (createForm.controls.title.hasError('maxlength')) {
@@ -40,8 +47,16 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Descripción detallada</mat-label>
-            <textarea matInput formControlName="description" rows="4" placeholder="Describa el trabajo técnico a realizar..." maxlength="1000"></textarea>
-            <mat-hint align="end">{{ createForm.controls.description.value.length }} / 1000</mat-hint>
+            <textarea
+              matInput
+              formControlName="description"
+              rows="4"
+              placeholder="Describa el trabajo técnico a realizar..."
+              maxlength="1000"
+            ></textarea>
+            <mat-hint align="end"
+              >{{ createForm.controls.description.value.length }} / 1000</mat-hint
+            >
             @if (createForm.controls.description.hasError('maxlength')) {
               <mat-error>La descripción no puede exceder 1000 caracteres</mat-error>
             }
@@ -57,7 +72,10 @@
           <div class="form-grid">
             <mat-form-field appearance="outline">
               <mat-label>Cliente</mat-label>
-              <mat-select formControlName="clientId" [placeholder]="loadingClients() ? 'Cargando clientes...' : 'Seleccione un cliente'">
+              <mat-select
+                formControlName="clientId"
+                [placeholder]="loadingClients() ? 'Cargando clientes...' : 'Seleccione un cliente'"
+              >
                 @for (client of clients(); track client.id) {
                   <mat-option [value]="client.id">
                     {{ client.businessName }} ({{ client.taxId }})
@@ -65,7 +83,10 @@
                 }
               </mat-select>
               <mat-icon matPrefix>business</mat-icon>
-              @if (createForm.controls.clientId.hasError('required') && createForm.controls.clientId.touched) {
+              @if (
+                createForm.controls.clientId.hasError('required') &&
+                createForm.controls.clientId.touched
+              ) {
                 <mat-error>El cliente es obligatorio</mat-error>
               }
               @if (createForm.controls.clientId.hasError('serverError')) {
@@ -81,7 +102,10 @@
                 }
               </mat-select>
               <mat-icon matPrefix>flag</mat-icon>
-              @if (createForm.controls.priority.hasError('required') && createForm.controls.priority.touched) {
+              @if (
+                createForm.controls.priority.hasError('required') &&
+                createForm.controls.priority.touched
+              ) {
                 <mat-error>La prioridad es obligatoria</mat-error>
               }
               @if (createForm.controls.priority.hasError('serverError')) {
@@ -91,16 +115,23 @@
 
             <mat-form-field appearance="outline">
               <mat-label>ID Técnico Asignado (Opcional)</mat-label>
-              <input matInput type="number" formControlName="assignedTechnicianId" placeholder="Ej. 2">
+              <input
+                matInput
+                type="number"
+                formControlName="assignedTechnicianId"
+                placeholder="Ej. 2"
+              />
               <mat-icon matPrefix>person</mat-icon>
               @if (createForm.controls.assignedTechnicianId.hasError('serverError')) {
-                <mat-error>{{ createForm.controls.assignedTechnicianId.getError('serverError') }}</mat-error>
+                <mat-error>{{
+                  createForm.controls.assignedTechnicianId.getError('serverError')
+                }}</mat-error>
               }
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Fecha Programada (Opcional)</mat-label>
-              <input matInput type="datetime-local" formControlName="scheduledAt">
+              <input matInput type="datetime-local" formControlName="scheduledAt" />
               <mat-icon matPrefix>event</mat-icon>
               @if (createForm.controls.scheduledAt.hasError('serverError')) {
                 <mat-error>{{ createForm.controls.scheduledAt.getError('serverError') }}</mat-error>
@@ -111,7 +142,13 @@
 
         <div class="form-actions">
           <a mat-button routerLink="/work-orders" [disabled]="loading()">Cancelar</a>
-          <button mat-raised-button color="primary" type="submit" [disabled]="loading()" class="submit-btn">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            [disabled]="loading()"
+            class="submit-btn"
+          >
             @if (loading()) {
               <mat-spinner diameter="20" class="spinner"></mat-spinner>
               <span>Creando orden...</span>

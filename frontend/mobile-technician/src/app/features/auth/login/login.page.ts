@@ -13,7 +13,7 @@ import {
   IonInput,
   IonItem,
   IonNote,
-  IonSpinner
+  IonSpinner,
 } from '@ionic/angular';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -34,8 +34,8 @@ import { AuthService } from '../../../core/services/auth.service';
     IonInput,
     IonButton,
     IonSpinner,
-    IonNote
-  ]
+    IonNote,
+  ],
 })
 export class LoginPage {
   private readonly fb = inject(FormBuilder);
@@ -47,7 +47,7 @@ export class LoginPage {
 
   readonly form = this.fb.group({
     username: ['', [Validators.required]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
   });
 
   onSubmit(): void {
@@ -75,7 +75,7 @@ export class LoginPage {
         } else {
           this.errorMessage.set('Error al iniciar sesión. Intente nuevamente.');
         }
-      }
+      },
     });
   }
 }

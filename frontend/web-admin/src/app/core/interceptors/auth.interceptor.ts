@@ -4,7 +4,7 @@ import {
   HttpEvent,
   HttpHandlerFn,
   HttpInterceptorFn,
-  HttpRequest
+  HttpRequest,
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
@@ -28,8 +28,8 @@ export const authInterceptor: HttpInterceptorFn = (
   if (token && !isAuthEndpoint && !isRefresh && !req.headers.has('Authorization')) {
     authorizedReq = req.clone({
       setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
   }
 
@@ -37,16 +37,16 @@ export const authInterceptor: HttpInterceptorFn = (
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && !isAuthEndpoint && !isRefresh && !alreadyRetried) {
         return authService.refreshToken().pipe(
-          switchMap(authResponse => {
+          switchMap((authResponse) => {
             const retryReq = req.clone({
               setHeaders: {
-                Authorization: `Bearer ${authResponse.accessToken}`
+                Authorization: `Bearer ${authResponse.accessToken}`,
               },
-              context: req.context.set(HAS_BEEN_RETRIED, true)
+              context: req.context.set(HAS_BEEN_RETRIED, true),
             });
             return next(retryReq);
           }),
-          catchError(refreshError => {
+          catchError((refreshError) => {
             authService.clearSession();
             return throwError(() => refreshError);
           })

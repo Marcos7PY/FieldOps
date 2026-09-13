@@ -23,7 +23,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
 
   if (authService.getRefreshToken()) {
     return authService.initSession().pipe(
-      map(user => {
+      map((user) => {
         if (!user) {
           return router.createUrlTree(['/auth/login']);
         }

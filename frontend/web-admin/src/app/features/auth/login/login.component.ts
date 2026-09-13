@@ -21,10 +21,10 @@ import { AuthService } from '../../../core/services';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  styleUrl: './login.component.scss',
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder).nonNullable;
@@ -38,11 +38,11 @@ export class LoginComponent {
 
   readonly loginForm = this.fb.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
   });
 
   togglePasswordVisibility(): void {
-    this.hidePassword.update(hide => !hide);
+    this.hidePassword.update((hide) => !hide);
   }
 
   onSubmit(): void {
@@ -65,14 +65,16 @@ export class LoginComponent {
       error: (err) => {
         this.loading.set(false);
         if (err.status === 401) {
-          this.errorMessage.set('Credenciales inválidas. Por favor verifique su usuario y contraseña.');
+          this.errorMessage.set(
+            'Credenciales inválidas. Por favor verifique su usuario y contraseña.'
+          );
         } else if (err.status === 429) {
           this.errorMessage.set('Demasiadas solicitudes. Espere un momento antes de reintentar.');
         } else {
           this.errorMessage.set('Error de conexión con el servidor. Intente nuevamente.');
         }
         this.loginForm.controls.password.reset();
-      }
+      },
     });
   }
 }

@@ -1,5 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpEventType, HttpHeaders, HttpParams, HttpRequest } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpEventType,
+  HttpHeaders,
+  HttpParams,
+  HttpRequest,
+} from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ChangeStatusRequest, Evidence, Page, WorkOrder, WorkOrderSummary } from '../models';
@@ -12,7 +18,7 @@ export interface UploadProgressState {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class WorkOrderService {
   private readonly http = inject(HttpClient);
@@ -30,17 +36,19 @@ export class WorkOrderService {
       params = params.set('technicianId', user.id.toString());
     }
 
-    return this.http.get<Page<WorkOrderSummary>>(`${environment.apiBaseUrl}/work-orders`, { params }).pipe(
-      map(res => {
-        this.db.saveLocalOrders(res.content);
-        return res;
-      })
-    );
+    return this.http
+      .get<Page<WorkOrderSummary>>(`${environment.apiBaseUrl}/work-orders`, { params })
+      .pipe(
+        map((res) => {
+          this.db.saveLocalOrders(res.content);
+          return res;
+        })
+      );
   }
 
   getWorkOrderById(id: number): Observable<WorkOrder> {
     return this.http.get<WorkOrder>(`${environment.apiBaseUrl}/work-orders/${id}`).pipe(
-      map(ord => {
+      map((ord) => {
         this.db.saveLocalOrders([ord]);
         return ord;
       })
@@ -88,12 +96,17 @@ export class WorkOrderService {
       formData.append('metadata', metadataBlob);
     }
 
-    const req = new HttpRequest('POST', `${environment.apiBaseUrl}/work-orders/${orderId}/evidence`, formData, {
-      reportProgress: true
-    });
+    const req = new HttpRequest(
+      'POST',
+      `${environment.apiBaseUrl}/work-orders/${orderId}/evidence`,
+      formData,
+      {
+        reportProgress: true,
+      }
+    );
 
     return this.http.request<Evidence>(req).pipe(
-      map(event => {
+      map((event) => {
         if (event.type === HttpEventType.UploadProgress) {
           const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
           return { progress };

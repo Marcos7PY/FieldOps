@@ -23,13 +23,13 @@ describe('DatabaseService', () => {
       clientId: 1,
       clientName: 'Cliente Alpha',
       createdAt: '2026-03-01T10:00:00Z',
-      version: 1
+      version: 1,
     };
 
     await service.saveLocalOrders([mockOrder]);
     const orders = await service.getLocalOrders();
     expect(orders.length).toBeGreaterThan(0);
-    const found = orders.find(o => o.id === 99);
+    const found = orders.find((o) => o.id === 99);
     expect(found).toBeDefined();
     expect(found?.code).toBe('WO-2026-0000099');
   });
@@ -40,10 +40,10 @@ describe('DatabaseService', () => {
     expect(op.status).toBe('PENDING');
 
     const pending = await service.getPendingOperations();
-    expect(pending.some(p => p.id === op.id)).toBe(true);
+    expect(pending.some((p) => p.id === op.id)).toBe(true);
 
     await service.updatePendingOperationStatus(op.id, 'COMPLETED');
     const remaining = await service.getPendingOperations();
-    expect(remaining.some(p => p.id === op.id)).toBe(false);
+    expect(remaining.some((p) => p.id === op.id)).toBe(false);
   });
 });

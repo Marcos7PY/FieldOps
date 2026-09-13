@@ -19,8 +19,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (token && !isRefresh) {
     modifiedReq = req.clone({
       setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
   }
 
@@ -29,24 +29,24 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
         if (isRefresh || hasBeenRetried) {
           authService.logout().subscribe({
-            complete: () => router.navigate(['/login'])
+            complete: () => router.navigate(['/login']),
           });
           return throwError(() => error);
         }
 
         return authService.refreshToken().pipe(
-          switchMap(refreshResponse => {
+          switchMap((refreshResponse) => {
             const retryReq = req.clone({
               setHeaders: {
-                Authorization: `Bearer ${refreshResponse.accessToken}`
+                Authorization: `Bearer ${refreshResponse.accessToken}`,
               },
-              context: req.context.set(HAS_BEEN_RETRIED, true)
+              context: req.context.set(HAS_BEEN_RETRIED, true),
             });
             return next(retryReq);
           }),
-          catchError(refreshError => {
+          catchError((refreshError) => {
             authService.logout().subscribe({
-              complete: () => router.navigate(['/login'])
+              complete: () => router.navigate(['/login']),
             });
             return throwError(() => refreshError);
           })

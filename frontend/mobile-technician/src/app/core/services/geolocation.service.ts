@@ -8,7 +8,7 @@ export interface Coordinates {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GeolocationService {
   async getCurrentPosition(): Promise<Coordinates | null> {
@@ -20,13 +20,13 @@ export class GeolocationService {
 
       const position: Position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000
+        timeout: 10000,
       });
 
       return {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy
+        accuracy: position.coords.accuracy,
       };
     } catch {
       return null;

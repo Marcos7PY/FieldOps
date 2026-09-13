@@ -13,25 +13,21 @@ describe('AuthService', () => {
     id: 1,
     username: 'supervisor',
     fullName: 'Supervisor User',
-    roles: ['ROLE_SUPERVISOR']
+    roles: ['ROLE_SUPERVISOR'],
   };
 
   const mockAuthResponse: AuthResponse = {
     accessToken: 'test-access-token-123',
     refreshToken: 'test-refresh-token-456',
     expiresIn: 900,
-    user: mockUser
+    user: mockUser,
   };
 
   beforeEach(() => {
     localStorage.clear();
 
     TestBed.configureTestingModule({
-      providers: [
-        AuthService,
-        provideHttpClient(),
-        provideHttpClientTesting()
-      ]
+      providers: [AuthService, provideHttpClient(), provideHttpClientTesting()],
     });
 
     service = TestBed.inject(AuthService);
@@ -54,7 +50,7 @@ describe('AuthService', () => {
   it('should authenticate user, store access token in memory and refresh token in localStorage on login', () => {
     const credentials: LoginRequest = { username: 'supervisor', password: 'Password123!' };
 
-    service.login(credentials).subscribe(response => {
+    service.login(credentials).subscribe((response) => {
       expect(response).toEqual(mockAuthResponse);
       expect(service.isAuthenticated()).toBe(true);
       expect(service.getAccessToken()).toBe('test-access-token-123');
@@ -85,10 +81,10 @@ describe('AuthService', () => {
       accessToken: 'new-access-token',
       refreshToken: 'new-refresh-token',
       expiresIn: 900,
-      user: mockUser
+      user: mockUser,
     };
 
-    service.refreshToken().subscribe(response => {
+    service.refreshToken().subscribe((response) => {
       expect(response).toEqual(newResponse);
       expect(service.getAccessToken()).toBe('new-access-token');
       expect(service.getRefreshToken()).toBe('new-refresh-token');
@@ -117,7 +113,7 @@ describe('AuthService', () => {
   });
 
   it('should return of(null) from initSession when no refresh token is present', () => {
-    service.initSession().subscribe(user => {
+    service.initSession().subscribe((user) => {
       expect(user).toBeNull();
     });
 

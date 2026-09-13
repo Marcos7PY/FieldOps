@@ -24,7 +24,7 @@ import { AuthService } from '../core/services';
     MatIconModule,
     MatButtonModule,
     MatMenuModule,
-    MatDividerModule
+    MatDividerModule,
   ],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss',
@@ -36,7 +36,7 @@ export class LayoutComponent {
   readonly sidebarOpened = signal(true);
 
   toggleSidebar(): void {
-    this.sidebarOpened.update(opened => !opened);
+    this.sidebarOpened.update((opened) => !opened);
   }
 
   logout(): void {

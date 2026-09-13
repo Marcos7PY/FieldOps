@@ -9,7 +9,7 @@ export interface CapturedPhoto {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CameraService {
   private readonly alertController = inject(AlertController);
@@ -26,7 +26,7 @@ export class CameraService {
         quality: 85,
         allowEditing: false,
         resultType: CameraResultType.Uri,
-        source: CameraSource.Camera
+        source: CameraSource.Camera,
       });
 
       if (!image.webPath) {
@@ -39,7 +39,7 @@ export class CameraService {
       return {
         blob,
         format: image.format,
-        webPath: image.webPath
+        webPath: image.webPath,
       };
     } catch (error: unknown) {
       // User cancelled camera dialog or closed camera app
@@ -73,8 +73,9 @@ export class CameraService {
     const alert = await this.alertController.create({
       header: 'Permiso Denegado',
       subHeader: 'Acceso a la cámara requerido',
-      message: 'Se requiere permiso de acceso a la cámara para capturar evidencias fotográficas del servicio. Por favor, habilite el permiso en la configuración de su dispositivo.',
-      buttons: ['Entendido']
+      message:
+        'Se requiere permiso de acceso a la cámara para capturar evidencias fotográficas del servicio. Por favor, habilite el permiso en la configuración de su dispositivo.',
+      buttons: ['Entendido'],
     });
     await alert.present();
   }
@@ -83,7 +84,7 @@ export class CameraService {
     const alert = await this.alertController.create({
       header: 'Error de Cámara',
       message: 'No fue posible acceder a la cámara en este momento. Intente nuevamente.',
-      buttons: ['Aceptar']
+      buttons: ['Aceptar'],
     });
     await alert.present();
   }

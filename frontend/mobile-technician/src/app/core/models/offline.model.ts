@@ -24,7 +24,8 @@ export interface LocalWorkOrder {
 }
 
 export type OperationType = 'STATUS_CHANGE' | 'UPLOAD_EVIDENCE';
-export type PendingOperationStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CONFLICT_MANUAL_REVIEW';
+export type PendingOperationStatus =
+  'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CONFLICT_MANUAL_REVIEW';
 
 export interface PendingOperation {
   id: number;

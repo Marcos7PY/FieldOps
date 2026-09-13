@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { User } from '../models/auth.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthStorageService {
   private static readonly KEY_ACCESS_TOKEN = 'fieldops_mobile_access_token';

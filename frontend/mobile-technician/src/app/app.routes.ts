@@ -9,12 +9,14 @@ export const routes: Routes = [
   },
   {
     path: 'orders',
-    loadComponent: () => import('./features/orders/orders-list/orders-list.page').then((m) => m.OrdersListPage),
+    loadComponent: () =>
+      import('./features/orders/orders-list/orders-list.page').then((m) => m.OrdersListPage),
     canActivate: [authGuard],
   },
   {
     path: 'orders/:id',
-    loadComponent: () => import('./features/orders/order-detail/order-detail.page').then((m) => m.OrderDetailPage),
+    loadComponent: () =>
+      import('./features/orders/order-detail/order-detail.page').then((m) => m.OrderDetailPage),
     canActivate: [authGuard],
   },
   {

@@ -17,8 +17,8 @@ describe('SyncService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         DatabaseService,
-        WorkOrderService
-      ]
+        WorkOrderService,
+      ],
     });
     service = TestBed.inject(SyncService);
     db = TestBed.inject(DatabaseService);
@@ -33,7 +33,7 @@ describe('SyncService', () => {
     const op = await db.addPendingOperation('STATUS_CHANGE', 10, {
       newStatus: 'IN_PROGRESS',
       notes: 'test',
-      version: 1
+      version: 1,
     });
 
     const mockResponse: any = {
@@ -45,7 +45,7 @@ describe('SyncService', () => {
       clientId: 1,
       clientName: 'Cliente',
       version: 2,
-      createdAt: '2026-01-01T00:00:00Z'
+      createdAt: '2026-01-01T00:00:00Z',
     };
 
     vi.spyOn(workOrderService, 'changeStatus').mockReturnValue(of(mockResponse));
@@ -54,14 +54,14 @@ describe('SyncService', () => {
     expect(result.successCount).toBeGreaterThanOrEqual(1);
 
     const pending = await db.getPendingOperations();
-    expect(pending.some(p => p.id === op.id)).toBe(false);
+    expect(pending.some((p) => p.id === op.id)).toBe(false);
   });
 
   it('should flag conflict for manual review upon 409 error without deleting local data', async () => {
     const op = await db.addPendingOperation('STATUS_CHANGE', 20, {
       newStatus: 'COMPLETED',
       notes: 'test complete',
-      version: 1
+      version: 1,
     });
 
     const error409 = { status: 409, message: 'Optimistic Lock Conflict' };
@@ -72,6 +72,6 @@ describe('SyncService', () => {
 
     const pending = await db.getPendingOperations();
     // Conflicted operations are excluded from the active queue ('PENDING')
-    expect(pending.some(p => p.id === op.id)).toBe(false);
+    expect(pending.some((p) => p.id === op.id)).toBe(false);
   });
 });

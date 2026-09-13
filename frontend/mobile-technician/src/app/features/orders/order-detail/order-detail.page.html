@@ -9,239 +9,234 @@
 
 <ion-content [fullscreen]="true" class="ion-padding">
   @if (!network.isOnline()) {
-    <div class="offline-banner">
-      <ion-icon name="cloud-offline-outline"></ion-icon>
-      <span>Modo sin conexión. Las modificaciones se encolarán localmente.</span>
-    </div>
-  }
-
-  @if (loading()) {
-    <div class="center-container">
-      <ion-spinner name="crescent"></ion-spinner>
-      <p class="loading-text">Cargando detalles...</p>
-    </div>
+  <div class="offline-banner">
+    <ion-icon name="cloud-offline-outline"></ion-icon>
+    <span>Modo sin conexión. Las modificaciones se encolarán localmente.</span>
+  </div>
+  } @if (loading()) {
+  <div class="center-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p class="loading-text">Cargando detalles...</p>
+  </div>
   } @else if (errorMessage()) {
-    <div class="center-container">
-      <p class="error-text">{{ errorMessage() }}</p>
-      <ion-button fill="outline" (click)="loadOrderDetail(order()?.id || 1)">
-        Reintentar
-      </ion-button>
-    </div>
+  <div class="center-container">
+    <p class="error-text">{{ errorMessage() }}</p>
+    <ion-button fill="outline" (click)="loadOrderDetail(order()?.id || 1)"> Reintentar </ion-button>
+  </div>
   } @else if (order(); as ord) {
-    <div class="order-detail-container">
-      <!-- Status & Priority Banner -->
-      <div class="badges-banner">
-        @if (offlineQueue.pendingCount() > 0) {
-          <ion-badge color="tertiary" class="main-badge sync-badge">
-            <ion-icon name="sync-outline"></ion-icon>
-            Pendiente de sincronizar
-          </ion-badge>
+  <div class="order-detail-container">
+    <!-- Status & Priority Banner -->
+    <div class="badges-banner">
+      @if (offlineQueue.pendingCount() > 0) {
+      <ion-badge color="tertiary" class="main-badge sync-badge">
+        <ion-icon name="sync-outline"></ion-icon>
+        Pendiente de sincronizar
+      </ion-badge>
+      }
+      <ion-badge [color]="getStatusColor(ord.status)" class="main-badge">
+        {{ ord.status }}
+      </ion-badge>
+      <ion-badge [color]="getPriorityColor(ord.priority)" class="main-badge">
+        Prioridad: {{ ord.priority }}
+      </ion-badge>
+    </div>
+
+    <!-- General Info Card -->
+    <ion-card class="detail-card">
+      <ion-card-header>
+        <ion-card-subtitle>{{ ord.code }}</ion-card-subtitle>
+        <ion-card-title>{{ ord.title }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @if (ord.description) {
+        <p class="order-description">{{ ord.description }}</p>
         }
-        <ion-badge [color]="getStatusColor(ord.status)" class="main-badge">
-          {{ ord.status }}
-        </ion-badge>
-        <ion-badge [color]="getPriorityColor(ord.priority)" class="main-badge">
-          Prioridad: {{ ord.priority }}
-        </ion-badge>
-      </div>
 
-      <!-- General Info Card -->
-      <ion-card class="detail-card">
-        <ion-card-header>
-          <ion-card-subtitle>{{ ord.code }}</ion-card-subtitle>
-          <ion-card-title>{{ ord.title }}</ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-          @if (ord.description) {
-            <p class="order-description">{{ ord.description }}</p>
+        <div class="dates-grid">
+          <div class="date-item">
+            <span class="date-label">Creada:</span>
+            <span class="date-value">{{ ord.createdAt | date:'short' }}</span>
+          </div>
+          @if (ord.scheduledAt) {
+          <div class="date-item">
+            <span class="date-label">Programada:</span>
+            <span class="date-value">{{ ord.scheduledAt | date:'short' }}</span>
+          </div>
+          } @if (ord.startedAt) {
+          <div class="date-item">
+            <span class="date-label">Iniciada:</span>
+            <span class="date-value">{{ ord.startedAt | date:'short' }}</span>
+          </div>
+          } @if (ord.completedAt) {
+          <div class="date-item">
+            <span class="date-label">Completada:</span>
+            <span class="date-value">{{ ord.completedAt | date:'short' }}</span>
+          </div>
           }
+        </div>
+      </ion-card-content>
+    </ion-card>
 
-          <div class="dates-grid">
-            <div class="date-item">
-              <span class="date-label">Creada:</span>
-              <span class="date-value">{{ ord.createdAt | date:'short' }}</span>
+    <!-- Client Information Card -->
+    <ion-card class="detail-card">
+      <ion-card-header>
+        <ion-card-title class="section-title">
+          <ion-icon name="business-outline"></ion-icon>
+          Cliente
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <h4 class="client-name">{{ ord.client.businessName }}</h4>
+        <p class="client-tax">NIF/CIF: {{ ord.client.taxId }}</p>
+
+        @if (ord.client.address) {
+        <p class="client-info-row">
+          <ion-icon name="navigate-outline"></ion-icon>
+          <span>{{ ord.client.address }}</span>
+        </p>
+        } @if (ord.client.phone) {
+        <p class="client-info-row">
+          <ion-icon name="call-outline"></ion-icon>
+          <a [href]="'tel:' + ord.client.phone" class="phone-link">{{ ord.client.phone }}</a>
+        </p>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Evidence Photo Capture (When In Progress) -->
+    @if (ord.status === 'IN_PROGRESS') {
+    <ion-card class="detail-card evidence-capture-card">
+      <ion-card-header>
+        <ion-card-title class="section-title">
+          <ion-icon name="camera-outline"></ion-icon>
+          Evidencia Fotográfica
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @if (currentPhoto(); as photo) {
+        <div class="photo-preview-container">
+          <img [src]="photo.webPath" alt="Evidencia capturada" class="captured-preview" />
+
+          @if (uploadingEvidence()) {
+          <div class="upload-progress-box">
+            <ion-progress-bar
+              [value]="(uploadProgress() || 0) / 100"
+              color="primary"
+            ></ion-progress-bar>
+            <p class="progress-text">Subiendo evidencia: {{ uploadProgress() }}%</p>
+          </div>
+          } @else {
+          <div class="preview-actions">
+            <ion-button expand="block" color="primary" (click)="uploadEvidence()">
+              <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+              Subir Evidencia
+            </ion-button>
+            <ion-button fill="clear" color="danger" size="small" (click)="clearPhoto()">
+              Descartar foto
+            </ion-button>
+          </div>
+          }
+        </div>
+        } @else {
+        <ion-button expand="block" fill="outline" (click)="capturePhoto()">
+          <ion-icon slot="start" name="camera-outline"></ion-icon>
+          Tomar Fotografía
+        </ion-button>
+        }
+      </ion-card-content>
+    </ion-card>
+    }
+
+    <!-- Registered Evidences List -->
+    @if (ord.evidences && ord.evidences.length > 0) {
+    <ion-card class="detail-card">
+      <ion-card-header>
+        <ion-card-title class="section-title">
+          <ion-icon name="camera-outline"></ion-icon>
+          Evidencias Registradas ({{ ord.evidences.length }})
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="evidences-list">
+          @for (ev of ord.evidences; track ev.id) {
+          <div class="evidence-row">
+            <div class="evidence-info">
+              <span class="evidence-date">{{ ev.uploadedAt | date:'short' }}</span>
+              <span class="evidence-size">{{ (ev.sizeBytes / 1024) | number:'1.0-0' }} KB</span>
             </div>
-            @if (ord.scheduledAt) {
-              <div class="date-item">
-                <span class="date-label">Programada:</span>
-                <span class="date-value">{{ ord.scheduledAt | date:'short' }}</span>
-              </div>
-            }
-            @if (ord.startedAt) {
-              <div class="date-item">
-                <span class="date-label">Iniciada:</span>
-                <span class="date-value">{{ ord.startedAt | date:'short' }}</span>
-              </div>
-            }
-            @if (ord.completedAt) {
-              <div class="date-item">
-                <span class="date-label">Completada:</span>
-                <span class="date-value">{{ ord.completedAt | date:'short' }}</span>
-              </div>
+            @if (ev.latitude && ev.longitude) {
+            <span class="evidence-coords"
+              >GPS: {{ ev.latitude | number:'1.4-4' }}, {{ ev.longitude | number:'1.4-4' }}</span
+            >
             }
           </div>
-        </ion-card-content>
-      </ion-card>
-
-      <!-- Client Information Card -->
-      <ion-card class="detail-card">
-        <ion-card-header>
-          <ion-card-title class="section-title">
-            <ion-icon name="business-outline"></ion-icon>
-            Cliente
-          </ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-          <h4 class="client-name">{{ ord.client.businessName }}</h4>
-          <p class="client-tax">NIF/CIF: {{ ord.client.taxId }}</p>
-
-          @if (ord.client.address) {
-            <p class="client-info-row">
-              <ion-icon name="navigate-outline"></ion-icon>
-              <span>{{ ord.client.address }}</span>
-            </p>
           }
+        </div>
+      </ion-card-content>
+    </ion-card>
+    }
 
-          @if (ord.client.phone) {
-            <p class="client-info-row">
-              <ion-icon name="call-outline"></ion-icon>
-              <a [href]="'tel:' + ord.client.phone" class="phone-link">{{ ord.client.phone }}</a>
-            </p>
-          }
-        </ion-card-content>
-      </ion-card>
-
-      <!-- Evidence Photo Capture (When In Progress) -->
-      @if (ord.status === 'IN_PROGRESS') {
-        <ion-card class="detail-card evidence-capture-card">
-          <ion-card-header>
-            <ion-card-title class="section-title">
-              <ion-icon name="camera-outline"></ion-icon>
-              Evidencia Fotográfica
-            </ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            @if (currentPhoto(); as photo) {
-              <div class="photo-preview-container">
-                <img [src]="photo.webPath" alt="Evidencia capturada" class="captured-preview" />
-
-                @if (uploadingEvidence()) {
-                  <div class="upload-progress-box">
-                    <ion-progress-bar [value]="(uploadProgress() || 0) / 100" color="primary"></ion-progress-bar>
-                    <p class="progress-text">Subiendo evidencia: {{ uploadProgress() }}%</p>
-                  </div>
-                } @else {
-                  <div class="preview-actions">
-                    <ion-button expand="block" color="primary" (click)="uploadEvidence()">
-                      <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
-                      Subir Evidencia
-                    </ion-button>
-                    <ion-button fill="clear" color="danger" size="small" (click)="clearPhoto()">
-                      Descartar foto
-                    </ion-button>
-                  </div>
-                }
-              </div>
-            } @else {
-              <ion-button expand="block" fill="outline" (click)="capturePhoto()">
-                <ion-icon slot="start" name="camera-outline"></ion-icon>
-                Tomar Fotografía
-              </ion-button>
-            }
-          </ion-card-content>
-        </ion-card>
-      }
-
-      <!-- Registered Evidences List -->
-      @if (ord.evidences && ord.evidences.length > 0) {
-        <ion-card class="detail-card">
-          <ion-card-header>
-            <ion-card-title class="section-title">
-              <ion-icon name="camera-outline"></ion-icon>
-              Evidencias Registradas ({{ ord.evidences.length }})
-            </ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            <div class="evidences-list">
-              @for (ev of ord.evidences; track ev.id) {
-                <div class="evidence-row">
-                  <div class="evidence-info">
-                    <span class="evidence-date">{{ ev.uploadedAt | date:'short' }}</span>
-                    <span class="evidence-size">{{ (ev.sizeBytes / 1024) | number:'1.0-0' }} KB</span>
-                  </div>
-                  @if (ev.latitude && ev.longitude) {
-                    <span class="evidence-coords">GPS: {{ ev.latitude | number:'1.4-4' }}, {{ ev.longitude | number:'1.4-4' }}</span>
-                  }
-                </div>
-              }
-            </div>
-          </ion-card-content>
-        </ion-card>
-      }
-
-      <!-- Action Buttons depending on State -->
-      <div class="action-section">
-        @if (ord.status === 'ASSIGNED') {
-          <ion-button
-            expand="block"
-            color="primary"
-            class="action-btn"
-            [disabled]="updatingStatus()"
-            (click)="startWork()"
-          >
-            @if (updatingStatus()) {
-              <ion-spinner name="crescent"></ion-spinner>
-            } @else {
-              <ion-icon slot="start" name="play-outline"></ion-icon>
-              Iniciar Trabajo
-            }
-          </ion-button>
-        } @else if (ord.status === 'IN_PROGRESS') {
-          <ion-button
-            expand="block"
-            color="success"
-            class="action-btn"
-            [disabled]="updatingStatus()"
-            (click)="promptCompleteWork()"
-          >
-            @if (updatingStatus()) {
-              <ion-spinner name="crescent"></ion-spinner>
-            } @else {
-              <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
-              Completar Orden
-            }
-          </ion-button>
-        }
-      </div>
-
-      <!-- Status History -->
-      @if (ord.statusHistory && ord.statusHistory.length > 0) {
-        <ion-card class="detail-card history-card">
-          <ion-card-header>
-            <ion-card-title class="section-title">
-              <ion-icon name="time-outline"></ion-icon>
-              Historial de Estados
-            </ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            <ion-list lines="inset" class="history-list">
-              @for (item of ord.statusHistory; track item.id) {
-                <ion-item class="history-item">
-                  <ion-label>
-                    <div class="history-status-header">
-                      <span class="history-new-status">{{ item.newStatus }}</span>
-                      <span class="history-date">{{ item.changedAt | date:'short' }}</span>
-                    </div>
-                    @if (item.notes) {
-                      <p class="history-notes">{{ item.notes }}</p>
-                    }
-                  </ion-label>
-                </ion-item>
-              }
-            </ion-list>
-          </ion-card-content>
-        </ion-card>
+    <!-- Action Buttons depending on State -->
+    <div class="action-section">
+      @if (ord.status === 'ASSIGNED') {
+      <ion-button
+        expand="block"
+        color="primary"
+        class="action-btn"
+        [disabled]="updatingStatus()"
+        (click)="startWork()"
+      >
+        @if (updatingStatus()) {
+        <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+        <ion-icon slot="start" name="play-outline"></ion-icon>
+        Iniciar Trabajo }
+      </ion-button>
+      } @else if (ord.status === 'IN_PROGRESS') {
+      <ion-button
+        expand="block"
+        color="success"
+        class="action-btn"
+        [disabled]="updatingStatus()"
+        (click)="promptCompleteWork()"
+      >
+        @if (updatingStatus()) {
+        <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+        <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+        Completar Orden }
+      </ion-button>
       }
     </div>
+
+    <!-- Status History -->
+    @if (ord.statusHistory && ord.statusHistory.length > 0) {
+    <ion-card class="detail-card history-card">
+      <ion-card-header>
+        <ion-card-title class="section-title">
+          <ion-icon name="time-outline"></ion-icon>
+          Historial de Estados
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list lines="inset" class="history-list">
+          @for (item of ord.statusHistory; track item.id) {
+          <ion-item class="history-item">
+            <ion-label>
+              <div class="history-status-header">
+                <span class="history-new-status">{{ item.newStatus }}</span>
+                <span class="history-date">{{ item.changedAt | date:'short' }}</span>
+              </div>
+              @if (item.notes) {
+              <p class="history-notes">{{ item.notes }}</p>
+              }
+            </ion-label>
+          </ion-item>
+          }
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+    }
+  </div>
   }
 </ion-content>

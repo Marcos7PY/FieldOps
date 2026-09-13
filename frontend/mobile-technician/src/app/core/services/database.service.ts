@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
-import { LocalWorkOrder, PendingOperation, PendingOperationStatus, WorkOrder, WorkOrderSummary } from '../models';
+import {
+  LocalWorkOrder,
+  PendingOperation,
+  PendingOperationStatus,
+  WorkOrder,
+  WorkOrderSummary,
+} from '../models';
 
 const DB_NAME = 'fieldops_technician';
 
@@ -60,7 +66,7 @@ CREATE INDEX IF NOT EXISTS ix_local_order_status ON local_work_order (status);
 `;
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class DatabaseService {
   private sqlite: SQLiteConnection | null = null;
@@ -112,7 +118,9 @@ export class DatabaseService {
 
     for (const ord of orders) {
       const isDetail = 'client' in ord;
-      const clientName = isDetail ? (ord as WorkOrder).client.businessName : (ord as WorkOrderSummary).clientName;
+      const clientName = isDetail
+        ? (ord as WorkOrder).client.businessName
+        : (ord as WorkOrderSummary).clientName;
       const clientAddress = isDetail ? (ord as WorkOrder).client.address || null : null;
       const clientPhone = isDetail ? (ord as WorkOrder).client.phone || null : null;
       const clientLat = isDetail ? (ord as WorkOrder).client.latitude || null : null;
@@ -142,7 +150,7 @@ export class DatabaseService {
         completedAt: completed,
         version: ord.version,
         syncStatus: 'SYNCED',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       this.memoryOrders.set(ord.id, localOrder);
@@ -158,13 +166,26 @@ export class DatabaseService {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           await this.db.run(sql, [
-            localOrder.id, localOrder.code, localOrder.title, localOrder.description,
-            localOrder.status, localOrder.priority, localOrder.clientId,
-            localOrder.clientName, localOrder.clientAddress, localOrder.clientPhone,
-            localOrder.clientLatitude, localOrder.clientLongitude,
-            localOrder.assignedTechnicianId, localOrder.createdAt,
-            localOrder.scheduledAt, localOrder.startedAt, localOrder.completedAt,
-            localOrder.version, localOrder.syncStatus, localOrder.updatedAt
+            localOrder.id,
+            localOrder.code,
+            localOrder.title,
+            localOrder.description,
+            localOrder.status,
+            localOrder.priority,
+            localOrder.clientId,
+            localOrder.clientName,
+            localOrder.clientAddress,
+            localOrder.clientPhone,
+            localOrder.clientLatitude,
+            localOrder.clientLongitude,
+            localOrder.assignedTechnicianId,
+            localOrder.createdAt,
+            localOrder.scheduledAt,
+            localOrder.startedAt,
+            localOrder.completedAt,
+            localOrder.version,
+            localOrder.syncStatus,
+            localOrder.updatedAt,
           ]);
         } catch {
           // Ignored if db run fails, memory copy exists
@@ -258,7 +279,7 @@ export class DatabaseService {
       createdAt: now,
       retryCount: 0,
       lastError: null,
-      status: 'PENDING'
+      status: 'PENDING',
     };
 
     this.memoryOperations.set(op.id, op);
@@ -299,7 +320,7 @@ export class DatabaseService {
     }
 
     return Array.from(this.memoryOperations.values())
-      .filter(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS')
+      .filter((o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS')
       .sort((a, b) => a.id - b.id);
   }
 
@@ -367,7 +388,7 @@ export class DatabaseService {
       completedAt: row.completed_at,
       version: row.version,
       syncStatus: row.sync_status,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 
@@ -380,7 +401,7 @@ export class DatabaseService {
       createdAt: row.created_at,
       retryCount: row.retry_count,
       lastError: row.last_error,
-      status: row.status
+      status: row.status,
     };
   }
 }

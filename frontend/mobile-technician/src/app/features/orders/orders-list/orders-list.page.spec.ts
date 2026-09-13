@@ -11,11 +11,7 @@ describe('OrdersListPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [OrdersListPage],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([])
-      ]
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(OrdersListPage);

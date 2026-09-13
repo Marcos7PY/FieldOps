@@ -30,7 +30,8 @@
     gap: 12px;
     align-items: center;
 
-    .rebuild-btn, .refresh-btn {
+    .rebuild-btn,
+    .refresh-btn {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -207,9 +208,15 @@
           height: 10px;
           border-radius: 2px;
 
-          &.dot-completed { background-color: #16a34a; }
-          &.dot-in-progress { background-color: #f59e0b; }
-          &.dot-other { background-color: #94a3b8; }
+          &.dot-completed {
+            background-color: #16a34a;
+          }
+          &.dot-in-progress {
+            background-color: #f59e0b;
+          }
+          &.dot-other {
+            background-color: #94a3b8;
+          }
         }
       }
     }
@@ -279,9 +286,15 @@
           width: 100%;
           min-height: 2px;
 
-          &.bar-completed { background-color: #16a34a; }
-          &.bar-in-progress { background-color: #f59e0b; }
-          &.bar-other { background-color: #cbd5e1; }
+          &.bar-completed {
+            background-color: #16a34a;
+          }
+          &.bar-in-progress {
+            background-color: #f59e0b;
+          }
+          &.bar-other {
+            background-color: #cbd5e1;
+          }
         }
       }
 
@@ -365,8 +378,12 @@
           height: 100%;
           min-width: 4px;
 
-          &.fill-completed { background-color: #16a34a; }
-          &.fill-in-progress { background-color: #f59e0b; }
+          &.fill-completed {
+            background-color: #16a34a;
+          }
+          &.fill-in-progress {
+            background-color: #f59e0b;
+          }
         }
       }
 
@@ -376,9 +393,17 @@
         font-size: 0.7rem;
         color: #64748b;
 
-        .label-completed { color: #15803d; font-weight: 500; }
-        .label-in-progress { color: #b45309; font-weight: 500; }
-        .label-assigned { color: #64748b; }
+        .label-completed {
+          color: #15803d;
+          font-weight: 500;
+        }
+        .label-in-progress {
+          color: #b45309;
+          font-weight: 500;
+        }
+        .label-assigned {
+          color: #64748b;
+        }
       }
     }
   }

@@ -5,12 +5,12 @@ export const routes: Routes = [
   {
     path: 'auth',
     canActivate: [guestGuard],
-    loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES),
+    loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
     path: '',
     canActivate: [authGuard],
-    loadComponent: () => import('./layout/layout.component').then(m => m.LayoutComponent),
+    loadComponent: () => import('./layout/layout.component').then((m) => m.LayoutComponent),
     children: [
       {
         path: '',
@@ -19,15 +19,18 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
-        loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES),
+        loadChildren: () =>
+          import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
       },
       {
         path: 'work-orders',
-        loadChildren: () => import('./features/work-orders/work-orders.routes').then(m => m.WORK_ORDERS_ROUTES),
+        loadChildren: () =>
+          import('./features/work-orders/work-orders.routes').then((m) => m.WORK_ORDERS_ROUTES),
       },
       {
         path: 'clients',
-        loadChildren: () => import('./features/clients/clients.routes').then(m => m.CLIENTS_ROUTES),
+        loadChildren: () =>
+          import('./features/clients/clients.routes').then((m) => m.CLIENTS_ROUTES),
       },
     ],
   },

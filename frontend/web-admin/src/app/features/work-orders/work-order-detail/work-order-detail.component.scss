@@ -311,11 +311,26 @@
           margin-top: 4px;
           flex-shrink: 0;
 
-          &.status-draft { background-color: #64748b; box-shadow: 0 0 0 2px #64748b; }
-          &.status-assigned { background-color: #0284c7; box-shadow: 0 0 0 2px #0284c7; }
-          &.status-in-progress { background-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b; }
-          &.status-completed { background-color: #16a34a; box-shadow: 0 0 0 2px #16a34a; }
-          &.status-cancelled { background-color: #dc2626; box-shadow: 0 0 0 2px #dc2626; }
+          &.status-draft {
+            background-color: #64748b;
+            box-shadow: 0 0 0 2px #64748b;
+          }
+          &.status-assigned {
+            background-color: #0284c7;
+            box-shadow: 0 0 0 2px #0284c7;
+          }
+          &.status-in-progress {
+            background-color: #f59e0b;
+            box-shadow: 0 0 0 2px #f59e0b;
+          }
+          &.status-completed {
+            background-color: #16a34a;
+            box-shadow: 0 0 0 2px #16a34a;
+          }
+          &.status-cancelled {
+            background-color: #dc2626;
+            box-shadow: 0 0 0 2px #dc2626;
+          }
         }
 
         .timeline-line {
@@ -357,11 +372,21 @@
             .to-status {
               font-weight: 700;
 
-              &.status-draft { color: #475569; }
-              &.status-assigned { color: #0369a1; }
-              &.status-in-progress { color: #b45309; }
-              &.status-completed { color: #15803d; }
-              &.status-cancelled { color: #b91c1c; }
+              &.status-draft {
+                color: #475569;
+              }
+              &.status-assigned {
+                color: #0369a1;
+              }
+              &.status-in-progress {
+                color: #b45309;
+              }
+              &.status-completed {
+                color: #15803d;
+              }
+              &.status-cancelled {
+                color: #b91c1c;
+              }
             }
           }
 

@@ -7,7 +7,7 @@ import { AuthStorageService } from './auth-storage.service';
 import { IS_REFRESH_REQUEST } from '../interceptors/auth.interceptor';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -27,7 +27,7 @@ export class AuthService {
       const [token, user, refresh] = await Promise.all([
         this.storage.getAccessToken(),
         this.storage.getUser(),
-        this.storage.getRefreshToken()
+        this.storage.getRefreshToken(),
       ]);
 
       if (token && user) {
@@ -58,13 +58,13 @@ export class AuthService {
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/auth/login`, credentials).pipe(
-      tap(async response => {
+      tap(async (response) => {
         this._accessToken.set(response.accessToken);
         this._currentUser.set(response.user);
         await Promise.all([
           this.storage.setAccessToken(response.accessToken),
           this.storage.setRefreshToken(response.refreshToken),
-          this.storage.setUser(response.user)
+          this.storage.setUser(response.user),
         ]);
       })
     );
@@ -72,7 +72,7 @@ export class AuthService {
 
   refreshToken(): Observable<AuthResponse> {
     return from(this.storage.getRefreshToken()).pipe(
-      switchMap(refresh => {
+      switchMap((refresh) => {
         if (!refresh) {
           this.clearLocalSession();
           return throwError(() => new Error('No refresh token available'));
@@ -81,21 +81,23 @@ export class AuthService {
         const payload: RefreshTokenRequest = { refreshToken: refresh };
         const context = new HttpContext().set(IS_REFRESH_REQUEST, true);
 
-        return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload, { context }).pipe(
-          tap(async response => {
-            this._accessToken.set(response.accessToken);
-            this._currentUser.set(response.user);
-            await Promise.all([
-              this.storage.setAccessToken(response.accessToken),
-              this.storage.setRefreshToken(response.refreshToken),
-              this.storage.setUser(response.user)
-            ]);
-          }),
-          catchError(err => {
-            this.clearLocalSession();
-            return throwError(() => err);
-          })
-        );
+        return this.http
+          .post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload, { context })
+          .pipe(
+            tap(async (response) => {
+              this._accessToken.set(response.accessToken);
+              this._currentUser.set(response.user);
+              await Promise.all([
+                this.storage.setAccessToken(response.accessToken),
+                this.storage.setRefreshToken(response.refreshToken),
+                this.storage.setUser(response.user),
+              ]);
+            }),
+            catchError((err) => {
+              this.clearLocalSession();
+              return throwError(() => err);
+            })
+          );
       })
     );
   }
@@ -104,14 +106,16 @@ export class AuthService {
     try {
       const payload: RefreshTokenRequest = { refreshToken };
       const context = new HttpContext().set(IS_REFRESH_REQUEST, true);
-      const res = await this.http.post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload, { context }).toPromise();
+      const res = await this.http
+        .post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload, { context })
+        .toPromise();
       if (res) {
         this._accessToken.set(res.accessToken);
         this._currentUser.set(res.user);
         await Promise.all([
           this.storage.setAccessToken(res.accessToken),
           this.storage.setRefreshToken(res.refreshToken),
-          this.storage.setUser(res.user)
+          this.storage.setUser(res.user),
         ]);
         return res;
       }
@@ -124,13 +128,13 @@ export class AuthService {
 
   logout(): Observable<void> {
     return from(this.storage.getRefreshToken()).pipe(
-      switchMap(refresh => {
+      switchMap((refresh) => {
         this.clearLocalSession();
         if (refresh) {
           const payload: RefreshTokenRequest = { refreshToken: refresh };
-          return this.http.post<void>(`${environment.apiBaseUrl}/auth/logout`, payload).pipe(
-            catchError(() => of(undefined))
-          );
+          return this.http
+            .post<void>(`${environment.apiBaseUrl}/auth/logout`, payload)
+            .pipe(catchError(() => of(undefined)));
         }
         return of(undefined);
       })

@@ -14,7 +14,7 @@ import {
   DailyMetricsResponse,
   RebuildProjectionResponse,
   TechnicianMetricItem,
-  TechnicianMetricsResponse
+  TechnicianMetricsResponse,
 } from '../../core/models';
 
 @Component({
@@ -27,10 +27,10 @@ import {
     MatIconModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
-    MatTooltipModule
+    MatTooltipModule,
   ],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent implements OnInit {
   private readonly analyticsService = inject(AnalyticsService);
@@ -66,11 +66,20 @@ export class DashboardComponent implements OnInit {
 
   readonly dailyChartData = computed(() => {
     const metrics: DailyMetricItem[] = this.dailyMetrics()?.metrics ?? [];
-    const grouped = new Map<string, { date: string; completed: number; inProgress: number; other: number; total: number }>();
+    const grouped = new Map<
+      string,
+      { date: string; completed: number; inProgress: number; other: number; total: number }
+    >();
 
     for (const item of metrics) {
       const dateKey = item.metricDate;
-      const current = grouped.get(dateKey) || { date: dateKey, completed: 0, inProgress: 0, other: 0, total: 0 };
+      const current = grouped.get(dateKey) || {
+        date: dateKey,
+        completed: 0,
+        inProgress: 0,
+        other: 0,
+        total: 0,
+      };
 
       if (item.status === 'COMPLETED') {
         current.completed += item.orderCount;
@@ -84,19 +93,24 @@ export class DashboardComponent implements OnInit {
     }
 
     const items = Array.from(grouped.values()).slice(-10);
-    const maxTotal = Math.max(1, ...items.map(i => i.total));
+    const maxTotal = Math.max(1, ...items.map((i) => i.total));
 
-    return items.map(item => ({
+    return items.map((item) => ({
       ...item,
       completedHeight: Math.round((item.completed / maxTotal) * 160),
       inProgressHeight: Math.round((item.inProgress / maxTotal) * 160),
-      otherHeight: Math.round((item.other / maxTotal) * 160)
+      otherHeight: Math.round((item.other / maxTotal) * 160),
     }));
   });
 
   readonly maxTechOrders = computed(() => {
     const list: TechnicianMetricItem[] = this.techMetrics()?.technicians ?? [];
-    const max = Math.max(1, ...list.map((t: TechnicianMetricItem) => Math.max(t.completedOrders, t.assignedOrders, t.inProgressOrders)));
+    const max = Math.max(
+      1,
+      ...list.map((t: TechnicianMetricItem) =>
+        Math.max(t.completedOrders, t.assignedOrders, t.inProgressOrders)
+      )
+    );
     return max;
   });
 
@@ -110,9 +124,15 @@ export class DashboardComponent implements OnInit {
 
     forkJoin({
       daily: this.analyticsService.getDailyMetrics(),
-      techs: this.analyticsService.getTechnicianMetrics()
+      techs: this.analyticsService.getTechnicianMetrics(),
     }).subscribe({
-      next: ({ daily, techs }: { daily: DailyMetricsResponse; techs: TechnicianMetricsResponse }) => {
+      next: ({
+        daily,
+        techs,
+      }: {
+        daily: DailyMetricsResponse;
+        techs: TechnicianMetricsResponse;
+      }) => {
         this.dailyMetrics.set(daily);
         this.techMetrics.set(techs);
         this.loading.set(false);
@@ -120,7 +140,7 @@ export class DashboardComponent implements OnInit {
       error: () => {
         this.errorMessage.set('No se pudieron cargar las métricas de analítica.');
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -142,11 +162,13 @@ export class DashboardComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.rebuilding.set(false);
         if (err.status === 403) {
-          this.errorMessage.set('Solo usuarios con rol SUPERVISOR pueden reconstruir la proyección.');
+          this.errorMessage.set(
+            'Solo usuarios con rol SUPERVISOR pueden reconstruir la proyección.'
+          );
         } else {
           this.errorMessage.set('Error al solicitar la reconstrucción de la proyección histórica.');
         }
-      }
+      },
     });
   }
 

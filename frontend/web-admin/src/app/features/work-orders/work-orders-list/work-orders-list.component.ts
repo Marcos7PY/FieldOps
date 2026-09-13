@@ -33,10 +33,10 @@ import { OrderStatus, Priority, WorkOrderSummary } from '../../../core/models';
     MatIconModule,
     MatChipsModule,
     MatProgressBarModule,
-    MatTooltipModule
+    MatTooltipModule,
   ],
   templateUrl: './work-orders-list.component.html',
-  styleUrl: './work-orders-list.component.scss'
+  styleUrl: './work-orders-list.component.scss',
 })
 export class WorkOrdersListComponent implements OnInit {
   private readonly workOrdersService = inject(WorkOrdersService);
@@ -50,7 +50,7 @@ export class WorkOrdersListComponent implements OnInit {
     'status',
     'priority',
     'scheduledAt',
-    'actions'
+    'actions',
   ];
 
   readonly orders = signal<WorkOrderSummary[]>([]);
@@ -68,22 +68,18 @@ export class WorkOrdersListComponent implements OnInit {
     { label: 'Asignada', value: 'ASSIGNED' },
     { label: 'En Progreso', value: 'IN_PROGRESS' },
     { label: 'Completada', value: 'COMPLETED' },
-    { label: 'Cancelada', value: 'CANCELLED' }
+    { label: 'Cancelada', value: 'CANCELLED' },
   ];
 
   constructor() {
-    this.searchControl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      takeUntilDestroyed()
-    ).subscribe(() => {
-      this.pageIndex.set(0);
-      this.loadOrders();
-    });
+    this.searchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => {
+        this.pageIndex.set(0);
+        this.loadOrders();
+      });
 
-    this.statusControl.valueChanges.pipe(
-      takeUntilDestroyed()
-    ).subscribe(() => {
+    this.statusControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.pageIndex.set(0);
       this.loadOrders();
     });
@@ -96,23 +92,25 @@ export class WorkOrdersListComponent implements OnInit {
   loadOrders(): void {
     this.loading.set(true);
 
-    this.workOrdersService.getWorkOrders({
-      page: this.pageIndex(),
-      size: this.pageSize(),
-      search: this.searchControl.value,
-      status: this.statusControl.value
-    }).subscribe({
-      next: (page) => {
-        this.orders.set(page.content);
-        this.totalElements.set(page.totalElements);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.orders.set([]);
-        this.totalElements.set(0);
-        this.loading.set(false);
-      }
-    });
+    this.workOrdersService
+      .getWorkOrders({
+        page: this.pageIndex(),
+        size: this.pageSize(),
+        search: this.searchControl.value,
+        status: this.statusControl.value,
+      })
+      .subscribe({
+        next: (page) => {
+          this.orders.set(page.content);
+          this.totalElements.set(page.totalElements);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.orders.set([]);
+          this.totalElements.set(0);
+          this.loading.set(false);
+        },
+      });
   }
 
   onPageChange(event: PageEvent): void {
@@ -132,43 +130,65 @@ export class WorkOrdersListComponent implements OnInit {
 
   getStatusClass(status: OrderStatus): string {
     switch (status) {
-      case 'DRAFT': return 'status-draft';
-      case 'ASSIGNED': return 'status-assigned';
-      case 'IN_PROGRESS': return 'status-in-progress';
-      case 'COMPLETED': return 'status-completed';
-      case 'CANCELLED': return 'status-cancelled';
-      default: return '';
+      case 'DRAFT':
+        return 'status-draft';
+      case 'ASSIGNED':
+        return 'status-assigned';
+      case 'IN_PROGRESS':
+        return 'status-in-progress';
+      case 'COMPLETED':
+        return 'status-completed';
+      case 'CANCELLED':
+        return 'status-cancelled';
+      default:
+        return '';
     }
   }
 
   getStatusLabel(status: OrderStatus): string {
     switch (status) {
-      case 'DRAFT': return 'Borrador';
-      case 'ASSIGNED': return 'Asignada';
-      case 'IN_PROGRESS': return 'En Progreso';
-      case 'COMPLETED': return 'Completada';
-      case 'CANCELLED': return 'Cancelada';
-      default: return status;
+      case 'DRAFT':
+        return 'Borrador';
+      case 'ASSIGNED':
+        return 'Asignada';
+      case 'IN_PROGRESS':
+        return 'En Progreso';
+      case 'COMPLETED':
+        return 'Completada';
+      case 'CANCELLED':
+        return 'Cancelada';
+      default:
+        return status;
     }
   }
 
   getPriorityClass(priority: Priority): string {
     switch (priority) {
-      case 'LOW': return 'priority-low';
-      case 'MEDIUM': return 'priority-medium';
-      case 'HIGH': return 'priority-high';
-      case 'CRITICAL': return 'priority-critical';
-      default: return '';
+      case 'LOW':
+        return 'priority-low';
+      case 'MEDIUM':
+        return 'priority-medium';
+      case 'HIGH':
+        return 'priority-high';
+      case 'CRITICAL':
+        return 'priority-critical';
+      default:
+        return '';
     }
   }
 
   getPriorityLabel(priority: Priority): string {
     switch (priority) {
-      case 'LOW': return 'Baja';
-      case 'MEDIUM': return 'Media';
-      case 'HIGH': return 'Alta';
-      case 'CRITICAL': return 'Crítica';
-      default: return priority;
+      case 'LOW':
+        return 'Baja';
+      case 'MEDIUM':
+        return 'Media';
+      case 'HIGH':
+        return 'Alta';
+      case 'CRITICAL':
+        return 'Crítica';
+      default:
+        return priority;
     }
   }
 }

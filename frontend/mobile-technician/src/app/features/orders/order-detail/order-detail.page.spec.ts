@@ -21,12 +21,12 @@ describe('OrderDetailPage', () => {
           useValue: {
             snapshot: {
               paramMap: {
-                get: (key: string) => (key === 'id' ? '1' : null)
-              }
-            }
-          }
-        }
-      ]
+                get: (key: string) => (key === 'id' ? '1' : null),
+              },
+            },
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(OrderDetailPage);

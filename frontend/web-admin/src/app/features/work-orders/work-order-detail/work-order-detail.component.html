@@ -76,23 +76,31 @@
             <div class="form-row">
               <mat-form-field appearance="outline">
                 <mat-label>ID del Técnico</mat-label>
-                <input matInput type="number" formControlName="technicianId" placeholder="Ej. 2">
+                <input matInput type="number" formControlName="technicianId" placeholder="Ej. 2" />
                 <mat-icon matPrefix>person</mat-icon>
-                @if (assignForm.controls.technicianId.hasError('required') && assignForm.controls.technicianId.touched) {
+                @if (
+                  assignForm.controls.technicianId.hasError('required') &&
+                  assignForm.controls.technicianId.touched
+                ) {
                   <mat-error>El ID del técnico es requerido</mat-error>
                 }
               </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Fecha Programada (Opcional)</mat-label>
-                <input matInput type="datetime-local" formControlName="scheduledAt">
+                <input matInput type="datetime-local" formControlName="scheduledAt" />
                 <mat-icon matPrefix>event</mat-icon>
               </mat-form-field>
             </div>
 
             <div class="action-buttons">
               <button mat-button type="button" (click)="toggleAssignForm()">Cancelar</button>
-              <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading() || assignForm.invalid">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="actionLoading() || assignForm.invalid"
+              >
                 @if (actionLoading()) {
                   <mat-spinner diameter="18"></mat-spinner>
                 } @else {
@@ -122,21 +130,34 @@
                   }
                 </mat-select>
                 <mat-icon matPrefix>swap_horiz</mat-icon>
-                @if (statusForm.controls.newStatus.hasError('required') && statusForm.controls.newStatus.touched) {
+                @if (
+                  statusForm.controls.newStatus.hasError('required') &&
+                  statusForm.controls.newStatus.touched
+                ) {
                   <mat-error>Debe seleccionar el nuevo estado</mat-error>
                 }
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Notas o Motivo del cambio (Opcional)</mat-label>
-                <input matInput formControlName="notes" placeholder="Ej. Materiales listos, orden en ejecución" maxlength="500">
+                <input
+                  matInput
+                  formControlName="notes"
+                  placeholder="Ej. Materiales listos, orden en ejecución"
+                  maxlength="500"
+                />
                 <mat-icon matPrefix>notes</mat-icon>
               </mat-form-field>
             </div>
 
             <div class="action-buttons">
               <button mat-button type="button" (click)="toggleStatusForm()">Cancelar</button>
-              <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading() || statusForm.invalid">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="actionLoading() || statusForm.invalid"
+              >
                 @if (actionLoading()) {
                   <mat-spinner diameter="18"></mat-spinner>
                 } @else {
@@ -158,26 +179,37 @@
               <mat-card-header>
                 <mat-icon mat-card-avatar color="primary">assignment</mat-icon>
                 <mat-card-title>{{ ord.title }}</mat-card-title>
-                <mat-card-subtitle>Creado por usuario #{{ ord.createdBy }} el {{ ord.createdAt | date:'dd/MM/yyyy HH:mm' }}</mat-card-subtitle>
+                <mat-card-subtitle
+                  >Creado por usuario #{{ ord.createdBy }} el
+                  {{ ord.createdAt | date: 'dd/MM/yyyy HH:mm' }}</mat-card-subtitle
+                >
               </mat-card-header>
               <mat-card-content class="card-body">
                 <h3 class="field-title">Descripción</h3>
-                <p class="description-text">{{ ord.description || 'Sin descripción detallada.' }}</p>
+                <p class="description-text">
+                  {{ ord.description || 'Sin descripción detallada.' }}
+                </p>
 
                 <mat-divider></mat-divider>
 
                 <div class="dates-grid">
                   <div class="date-item">
                     <span class="date-label">Programada</span>
-                    <span class="date-val">{{ ord.scheduledAt ? (ord.scheduledAt | date:'dd/MM/yyyy HH:mm') : 'No agendada' }}</span>
+                    <span class="date-val">{{
+                      ord.scheduledAt ? (ord.scheduledAt | date: 'dd/MM/yyyy HH:mm') : 'No agendada'
+                    }}</span>
                   </div>
                   <div class="date-item">
                     <span class="date-label">Iniciada</span>
-                    <span class="date-val">{{ ord.startedAt ? (ord.startedAt | date:'dd/MM/yyyy HH:mm') : 'No iniciada' }}</span>
+                    <span class="date-val">{{
+                      ord.startedAt ? (ord.startedAt | date: 'dd/MM/yyyy HH:mm') : 'No iniciada'
+                    }}</span>
                   </div>
                   <div class="date-item">
                     <span class="date-label">Completada</span>
-                    <span class="date-val">{{ ord.completedAt ? (ord.completedAt | date:'dd/MM/yyyy HH:mm') : 'Pendiente' }}</span>
+                    <span class="date-val">{{
+                      ord.completedAt ? (ord.completedAt | date: 'dd/MM/yyyy HH:mm') : 'Pendiente'
+                    }}</span>
                   </div>
                 </div>
               </mat-card-content>
@@ -206,7 +238,11 @@
                   <div class="detail-row">
                     <span class="detail-label">Técnico asignado:</span>
                     <span class="detail-val">
-                      {{ ord.assignedTechnicianId ? ('Técnico #' + ord.assignedTechnicianId) : 'Sin asignar' }}
+                      {{
+                        ord.assignedTechnicianId
+                          ? 'Técnico #' + ord.assignedTechnicianId
+                          : 'Sin asignar'
+                      }}
                     </span>
                   </div>
                 </div>
@@ -242,22 +278,22 @@
                       <div class="timeline-header">
                         <span class="status-transition">
                           @if (entry.previousStatus) {
-                            <span class="from-status">{{ getStatusLabel(entry.previousStatus) }}</span>
+                            <span class="from-status">{{
+                              getStatusLabel(entry.previousStatus)
+                            }}</span>
                             <mat-icon class="arrow-icon">arrow_forward</mat-icon>
                           }
                           <span class="to-status" [ngClass]="getStatusClass(entry.newStatus)">
                             {{ getStatusLabel(entry.newStatus) }}
                           </span>
                         </span>
-                        <span class="timeline-time">{{ entry.changedAt | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+                        <span class="timeline-time">{{
+                          entry.changedAt | date: 'dd/MM/yyyy HH:mm:ss'
+                        }}</span>
                       </div>
-                      <div class="timeline-user">
-                        Por usuario #{{ entry.changedBy }}
-                      </div>
+                      <div class="timeline-user">Por usuario #{{ entry.changedBy }}</div>
                       @if (entry.notes) {
-                        <div class="timeline-notes">
-                          "{{ entry.notes }}"
-                        </div>
+                        <div class="timeline-notes">"{{ entry.notes }}"</div>
                       }
                     </div>
                   </div>
@@ -279,7 +315,9 @@
             <div class="empty-evidence">
               <mat-icon class="empty-icon">collections</mat-icon>
               <p class="empty-title">No hay evidencias adjuntas</p>
-              <p class="empty-desc">Las evidencias capturadas por el técnico asignado aparecerán aquí.</p>
+              <p class="empty-desc">
+                Las evidencias capturadas por el técnico asignado aparecerán aquí.
+              </p>
             </div>
           } @else {
             <div class="evidence-grid">
@@ -296,26 +334,35 @@
                   <mat-card-content class="evidence-body">
                     <div class="meta-row">
                       <mat-icon class="mini-icon">schedule</mat-icon>
-                      <span>Subida: {{ ev.uploadedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                      <span>Subida: {{ ev.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
                     </div>
 
                     @if (ev.capturedAt) {
                       <div class="meta-row">
                         <mat-icon class="mini-icon">camera_alt</mat-icon>
-                        <span>Capturada: {{ ev.capturedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                        <span>Capturada: {{ ev.capturedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
                       </div>
                     }
 
-                    @if (ev.latitude !== null && ev.latitude !== undefined && ev.longitude !== null && ev.longitude !== undefined) {
+                    @if (
+                      ev.latitude !== null &&
+                      ev.latitude !== undefined &&
+                      ev.longitude !== null &&
+                      ev.longitude !== undefined
+                    ) {
                       <div class="coordinates-badge">
                         <mat-icon class="coord-icon">place</mat-icon>
-                        <span class="coord-text">{{ ev.latitude | number:'1.4-6' }}, {{ ev.longitude | number:'1.4-6' }}</span>
+                        <span class="coord-text"
+                          >{{ ev.latitude | number: '1.4-6' }},
+                          {{ ev.longitude | number: '1.4-6' }}</span
+                        >
                         <a
                           [href]="getMapUrl(ev.latitude, ev.longitude)"
                           target="_blank"
                           rel="noopener noreferrer"
                           class="map-link"
-                          matTooltip="Ver ubicación en Google Maps">
+                          matTooltip="Ver ubicación en Google Maps"
+                        >
                           <mat-icon class="ext-icon">open_in_new</mat-icon>
                         </a>
                       </div>

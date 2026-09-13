@@ -3,7 +3,7 @@ import { DatabaseService } from './database.service';
 import { NetworkService } from './network.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class OfflineQueueService {
   private readonly db = inject(DatabaseService);
@@ -31,7 +31,7 @@ export class OfflineQueueService {
     await this.db.addPendingOperation('STATUS_CHANGE', orderId, {
       newStatus,
       notes: notes || null,
-      version: version ?? 0
+      version: version ?? 0,
     });
     await this.refreshPendingCount();
   }
@@ -45,7 +45,7 @@ export class OfflineQueueService {
     await this.db.addPendingOperation('UPLOAD_EVIDENCE', orderId, {
       fileBase64,
       filename,
-      metadata: metadata || null
+      metadata: metadata || null,
     });
     await this.refreshPendingCount();
   }

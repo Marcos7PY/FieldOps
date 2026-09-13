@@ -6,7 +6,12 @@
     </div>
 
     <div class="header-actions">
-      <button mat-stroked-button (click)="loadDashboardData()" [disabled]="loading()" class="refresh-btn">
+      <button
+        mat-stroked-button
+        (click)="loadDashboardData()"
+        [disabled]="loading()"
+        class="refresh-btn"
+      >
         <mat-icon>refresh</mat-icon>
         <span>Actualizar</span>
       </button>
@@ -18,7 +23,8 @@
           (click)="rebuildProjection()"
           [disabled]="rebuilding() || loading()"
           matTooltip="Trunca y reconstruye la proyección analítica desde el histórico Kafka"
-          class="rebuild-btn">
+          class="rebuild-btn"
+        >
           @if (rebuilding()) {
             <mat-spinner diameter="18"></mat-spinner>
             <span>Reconstruyendo...</span>
@@ -134,15 +140,33 @@
             <div class="bars-wrapper">
               @for (col of dailyChartData(); track col.date) {
                 <div class="bar-column">
-                  <div class="bar-stack" [matTooltip]="col.date + ': ' + col.total + ' órdenes (' + col.completed + ' completadas, ' + col.inProgress + ' en progreso)'">
+                  <div
+                    class="bar-stack"
+                    [matTooltip]="
+                      col.date +
+                      ': ' +
+                      col.total +
+                      ' órdenes (' +
+                      col.completed +
+                      ' completadas, ' +
+                      col.inProgress +
+                      ' en progreso)'
+                    "
+                  >
                     @if (col.otherHeight > 0) {
                       <div class="bar-segment bar-other" [style.height.px]="col.otherHeight"></div>
                     }
                     @if (col.inProgressHeight > 0) {
-                      <div class="bar-segment bar-in-progress" [style.height.px]="col.inProgressHeight"></div>
+                      <div
+                        class="bar-segment bar-in-progress"
+                        [style.height.px]="col.inProgressHeight"
+                      ></div>
                     }
                     @if (col.completedHeight > 0) {
-                      <div class="bar-segment bar-completed" [style.height.px]="col.completedHeight"></div>
+                      <div
+                        class="bar-segment bar-completed"
+                        [style.height.px]="col.completedHeight"
+                      ></div>
                     }
                   </div>
                   <span class="column-date">{{ col.date.substring(5) }}</span>
@@ -177,12 +201,19 @@
                     <span class="tech-name">Técnico #{{ tech.technicianId }}</span>
                   </div>
                   <div class="tech-badges">
-                    @if (tech.avgDurationMinutes !== null && tech.avgDurationMinutes !== undefined) {
+                    @if (
+                      tech.avgDurationMinutes !== null && tech.avgDurationMinutes !== undefined
+                    ) {
                       <span class="tech-duration-badge">
-                        {{ tech.avgDurationMinutes | number:'1.1-1' }} min prom.
+                        {{ tech.avgDurationMinutes | number: '1.1-1' }} min prom.
                       </span>
                     }
-                    <span class="tech-total-count">{{ tech.completedOrders + tech.inProgressOrders + tech.assignedOrders }} órdenes</span>
+                    <span class="tech-total-count"
+                      >{{
+                        tech.completedOrders + tech.inProgressOrders + tech.assignedOrders
+                      }}
+                      órdenes</span
+                    >
                   </div>
                 </div>
 
@@ -191,13 +222,13 @@
                     <div
                       class="progress-fill fill-completed"
                       [style.width.%]="getBarWidthPercent(tech.completedOrders)"
-                      [matTooltip]="'Completadas: ' + tech.completedOrders">
-                    </div>
+                      [matTooltip]="'Completadas: ' + tech.completedOrders"
+                    ></div>
                     <div
                       class="progress-fill fill-in-progress"
                       [style.width.%]="getBarWidthPercent(tech.inProgressOrders)"
-                      [matTooltip]="'En progreso: ' + tech.inProgressOrders">
-                    </div>
+                      [matTooltip]="'En progreso: ' + tech.inProgressOrders"
+                    ></div>
                   </div>
                   <div class="progress-labels">
                     <span class="label-completed">{{ tech.completedOrders }} completadas</span>

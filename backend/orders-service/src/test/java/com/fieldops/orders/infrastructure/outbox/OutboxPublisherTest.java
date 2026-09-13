@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.MDC;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.kafka.core.KafkaTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;

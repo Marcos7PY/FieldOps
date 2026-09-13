@@ -10,7 +10,7 @@ import {
   OrderStatus,
   Page,
   WorkOrder,
-  WorkOrderSummary
+  WorkOrderSummary,
 } from '../models';
 
 export interface WorkOrderFilterParams {
@@ -33,7 +33,7 @@ export interface WorkOrderMetrics {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class WorkOrdersService {
   private readonly http = inject(HttpClient);
@@ -75,7 +75,11 @@ export class WorkOrdersService {
     return this.http.post<WorkOrder>(this.baseUrl, payload);
   }
 
-  assignWorkOrder(id: number, payload: AssignWorkOrderRequest, version?: number): Observable<WorkOrder> {
+  assignWorkOrder(
+    id: number,
+    payload: AssignWorkOrderRequest,
+    version?: number
+  ): Observable<WorkOrder> {
     let headers = new HttpHeaders();
     if (version !== undefined) {
       headers = headers.set('If-Match', `"${version}"`);

@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { Network, ConnectionStatus } from '@capacitor/network';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NetworkService {
   private readonly _isOnline = signal<boolean>(true);

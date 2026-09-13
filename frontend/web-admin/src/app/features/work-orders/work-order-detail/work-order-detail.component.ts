@@ -20,7 +20,7 @@ import {
   ChangeStatusRequest,
   OrderStatus,
   Priority,
-  WorkOrder
+  WorkOrder,
 } from '../../../core/models';
 
 @Component({
@@ -41,10 +41,10 @@ import {
     MatInputModule,
     MatSelectModule,
     MatTabsModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   templateUrl: './work-order-detail.component.html',
-  styleUrl: './work-order-detail.component.scss'
+  styleUrl: './work-order-detail.component.scss',
 })
 export class WorkOrderDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -65,12 +65,12 @@ export class WorkOrderDetailComponent implements OnInit {
 
   readonly statusForm = this.fb.group({
     newStatus: ['' as OrderStatus, [Validators.required]],
-    notes: ['', [Validators.maxLength(500)]]
+    notes: ['', [Validators.maxLength(500)]],
   });
 
   readonly assignForm = this.fb.group({
     technicianId: [null as number | null, [Validators.required, Validators.min(1)]],
-    scheduledAt: ['']
+    scheduledAt: [''],
   });
 
   ngOnInit(): void {
@@ -109,18 +109,18 @@ export class WorkOrderDetailComponent implements OnInit {
         } else {
           this.errorMessage.set('Error al cargar la información de la orden de trabajo.');
         }
-      }
+      },
     });
   }
 
   toggleStatusForm(): void {
-    this.showStatusForm.update(v => !v);
+    this.showStatusForm.update((v) => !v);
     this.actionError.set(null);
     this.actionSuccess.set(null);
   }
 
   toggleAssignForm(): void {
-    this.showAssignForm.update(v => !v);
+    this.showAssignForm.update((v) => !v);
     this.actionError.set(null);
     this.actionSuccess.set(null);
   }
@@ -138,7 +138,7 @@ export class WorkOrderDetailComponent implements OnInit {
     const raw = this.statusForm.getRawValue();
     const payload: ChangeStatusRequest = {
       newStatus: raw.newStatus,
-      notes: raw.notes ? raw.notes.trim() : null
+      notes: raw.notes ? raw.notes.trim() : null,
     };
 
     this.workOrdersService.changeStatus(current.id, payload, current.version).subscribe({
@@ -147,19 +147,23 @@ export class WorkOrderDetailComponent implements OnInit {
         this.actionLoading.set(false);
         this.showStatusForm.set(false);
         this.statusForm.reset();
-        this.actionSuccess.set(`Estado cambiado exitosamente a ${this.getStatusLabel(updated.status)}`);
+        this.actionSuccess.set(
+          `Estado cambiado exitosamente a ${this.getStatusLabel(updated.status)}`
+        );
       },
       error: (err) => {
         this.actionLoading.set(false);
         if (err.status === 409 || err.status === 412) {
-          this.actionError.set('Conflicto de concurrencia: la orden fue modificada por otro usuario. Recargando datos actualizados...');
+          this.actionError.set(
+            'Conflicto de concurrencia: la orden fue modificada por otro usuario. Recargando datos actualizados...'
+          );
           this.loadOrder(current.id);
         } else if (err.status === 422 || err.status === 400) {
           this.actionError.set(err.error?.detail || 'Transición de estado no permitida.');
         } else {
           this.actionError.set('Error al actualizar el estado de la orden.');
         }
-      }
+      },
     });
   }
 
@@ -176,12 +180,13 @@ export class WorkOrderDetailComponent implements OnInit {
     const raw = this.assignForm.getRawValue();
     let scheduledAtFormatted: string | null = null;
     if (raw.scheduledAt) {
-      scheduledAtFormatted = raw.scheduledAt.length === 16 ? `${raw.scheduledAt}:00` : raw.scheduledAt;
+      scheduledAtFormatted =
+        raw.scheduledAt.length === 16 ? `${raw.scheduledAt}:00` : raw.scheduledAt;
     }
 
     const payload: AssignWorkOrderRequest = {
       technicianId: Number(raw.technicianId),
-      scheduledAt: scheduledAtFormatted
+      scheduledAt: scheduledAtFormatted,
     };
 
     this.workOrdersService.assignWorkOrder(current.id, payload, current.version).subscribe({
@@ -195,12 +200,14 @@ export class WorkOrderDetailComponent implements OnInit {
       error: (err) => {
         this.actionLoading.set(false);
         if (err.status === 409 || err.status === 412) {
-          this.actionError.set('Conflicto de concurrencia: la orden fue modificada. Recargando datos...');
+          this.actionError.set(
+            'Conflicto de concurrencia: la orden fue modificada. Recargando datos...'
+          );
           this.loadOrder(current.id);
         } else {
           this.actionError.set(err.error?.detail || 'Error al asignar el técnico a la orden.');
         }
-      }
+      },
     });
   }
 
@@ -209,17 +216,17 @@ export class WorkOrderDetailComponent implements OnInit {
       case 'DRAFT':
         return [
           { label: 'Asignar (ASSIGNED)', value: 'ASSIGNED' },
-          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' }
+          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' },
         ];
       case 'ASSIGNED':
         return [
           { label: 'Iniciar trabajo (IN_PROGRESS)', value: 'IN_PROGRESS' },
-          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' }
+          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' },
         ];
       case 'IN_PROGRESS':
         return [
           { label: 'Completar trabajo (COMPLETED)', value: 'COMPLETED' },
-          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' }
+          { label: 'Cancelar (CANCELLED)', value: 'CANCELLED' },
         ];
       default:
         return [];
@@ -228,43 +235,65 @@ export class WorkOrderDetailComponent implements OnInit {
 
   getStatusClass(status: OrderStatus): string {
     switch (status) {
-      case 'DRAFT': return 'status-draft';
-      case 'ASSIGNED': return 'status-assigned';
-      case 'IN_PROGRESS': return 'status-in-progress';
-      case 'COMPLETED': return 'status-completed';
-      case 'CANCELLED': return 'status-cancelled';
-      default: return '';
+      case 'DRAFT':
+        return 'status-draft';
+      case 'ASSIGNED':
+        return 'status-assigned';
+      case 'IN_PROGRESS':
+        return 'status-in-progress';
+      case 'COMPLETED':
+        return 'status-completed';
+      case 'CANCELLED':
+        return 'status-cancelled';
+      default:
+        return '';
     }
   }
 
   getStatusLabel(status: OrderStatus): string {
     switch (status) {
-      case 'DRAFT': return 'Borrador';
-      case 'ASSIGNED': return 'Asignada';
-      case 'IN_PROGRESS': return 'En Progreso';
-      case 'COMPLETED': return 'Completada';
-      case 'CANCELLED': return 'Cancelada';
-      default: return status;
+      case 'DRAFT':
+        return 'Borrador';
+      case 'ASSIGNED':
+        return 'Asignada';
+      case 'IN_PROGRESS':
+        return 'En Progreso';
+      case 'COMPLETED':
+        return 'Completada';
+      case 'CANCELLED':
+        return 'Cancelada';
+      default:
+        return status;
     }
   }
 
   getPriorityClass(priority: Priority): string {
     switch (priority) {
-      case 'LOW': return 'priority-low';
-      case 'MEDIUM': return 'priority-medium';
-      case 'HIGH': return 'priority-high';
-      case 'CRITICAL': return 'priority-critical';
-      default: return '';
+      case 'LOW':
+        return 'priority-low';
+      case 'MEDIUM':
+        return 'priority-medium';
+      case 'HIGH':
+        return 'priority-high';
+      case 'CRITICAL':
+        return 'priority-critical';
+      default:
+        return '';
     }
   }
 
   getPriorityLabel(priority: Priority): string {
     switch (priority) {
-      case 'LOW': return 'Baja';
-      case 'MEDIUM': return 'Media';
-      case 'HIGH': return 'Alta';
-      case 'CRITICAL': return 'Crítica';
-      default: return priority;
+      case 'LOW':
+        return 'Baja';
+      case 'MEDIUM':
+        return 'Media';
+      case 'HIGH':
+        return 'Alta';
+      case 'CRITICAL':
+        return 'Crítica';
+      default:
+        return priority;
     }
   }
 

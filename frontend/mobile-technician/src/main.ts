@@ -1,5 +1,11 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { RouteReuseStrategy, provideRouter, withComponentInputBinding, withPreloading, PreloadAllModules } from '@angular/router';
+import {
+  RouteReuseStrategy,
+  provideRouter,
+  withComponentInputBinding,
+  withPreloading,
+  PreloadAllModules,
+} from '@angular/router';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';

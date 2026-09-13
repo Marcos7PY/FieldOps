@@ -16,7 +16,7 @@ import {
   IonRefresherContent,
   IonSpinner,
   IonTitle,
-  IonToolbar
+  IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { WorkOrderSummary } from '../../../core/models';
@@ -32,7 +32,7 @@ import {
   cloudOfflineOutline,
   logOutOutline,
   refreshOutline,
-  syncOutline
+  syncOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -55,8 +55,8 @@ import {
     IonRefresherContent,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
-    IonSpinner
-  ]
+    IonSpinner,
+  ],
 })
 export class OrdersListPage implements OnInit {
   private readonly workOrderService = inject(WorkOrderService);
@@ -80,7 +80,7 @@ export class OrdersListPage implements OnInit {
       cloudOfflineOutline,
       logOutOutline,
       refreshOutline,
-      syncOutline
+      syncOutline,
     });
   }
 
@@ -134,7 +134,7 @@ export class OrdersListPage implements OnInit {
         if (event) {
           (event.target as HTMLIonRefresherElement | HTMLIonInfiniteScrollElement)?.complete();
         }
-      }
+      },
     });
   }
 
@@ -158,7 +158,7 @@ export class OrdersListPage implements OnInit {
     this.authService.logout().subscribe({
       complete: () => {
         this.router.navigate(['/login']);
-      }
+      },
     });
   }
 

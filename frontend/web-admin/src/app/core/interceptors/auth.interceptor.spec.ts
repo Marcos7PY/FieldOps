@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from '../services/auth.service';
@@ -15,21 +20,21 @@ describe('authInterceptor', () => {
     id: 1,
     username: 'supervisor',
     fullName: 'Supervisor User',
-    roles: ['ROLE_SUPERVISOR']
+    roles: ['ROLE_SUPERVISOR'],
   };
 
   const initialAuth: AuthResponse = {
     accessToken: 'initial-access-token',
     refreshToken: 'initial-refresh-token',
     expiresIn: 900,
-    user: mockUser
+    user: mockUser,
   };
 
   const refreshedAuth: AuthResponse = {
     accessToken: 'refreshed-access-token',
     refreshToken: 'new-refresh-token',
     expiresIn: 900,
-    user: mockUser
+    user: mockUser,
   };
 
   beforeEach(() => {
@@ -39,8 +44,8 @@ describe('authInterceptor', () => {
       providers: [
         AuthService,
         provideHttpClient(withInterceptors([authInterceptor])),
-        provideHttpClientTesting()
-      ]
+        provideHttpClientTesting(),
+      ],
     });
 
     http = TestBed.inject(HttpClient);
@@ -67,7 +72,9 @@ describe('authInterceptor', () => {
   it('should not add Authorization header to login or refresh endpoints', () => {
     authService.setSession(initialAuth);
 
-    http.post(`${environment.apiBaseUrl}/auth/login`, { username: 'test', password: 'pwd' }).subscribe();
+    http
+      .post(`${environment.apiBaseUrl}/auth/login`, { username: 'test', password: 'pwd' })
+      .subscribe();
     const loginReq = httpMock.expectOne(`${environment.apiBaseUrl}/auth/login`);
     expect(loginReq.request.headers.has('Authorization')).toBe(false);
     loginReq.flush(initialAuth);
@@ -82,7 +89,7 @@ describe('authInterceptor', () => {
     authService.setSession(initialAuth);
 
     let finalResponse: unknown = null;
-    http.get('/api/v1/work-orders/1').subscribe(res => {
+    http.get('/api/v1/work-orders/1').subscribe((res) => {
       finalResponse = res;
     });
 
@@ -116,7 +123,7 @@ describe('authInterceptor', () => {
       error: (err: HttpErrorResponse) => {
         hasError = true;
         errorStatus = err.status;
-      }
+      },
     });
 
     // First attempt fails
@@ -129,7 +136,10 @@ describe('authInterceptor', () => {
 
     // Retried request fails again with 401
     const retriedReq = httpMock.expectOne('/api/v1/work-orders/1');
-    retriedReq.flush({ message: 'Invalid permissions' }, { status: 401, statusText: 'Unauthorized' });
+    retriedReq.flush(
+      { message: 'Invalid permissions' },
+      { status: 401, statusText: 'Unauthorized' }
+    );
 
     // Should NOT issue another refresh request
     httpMock.expectNone(`${environment.apiBaseUrl}/auth/refresh`);

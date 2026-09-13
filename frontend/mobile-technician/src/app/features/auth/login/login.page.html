@@ -14,9 +14,9 @@
       <ion-card-content>
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           @if (errorMessage()) {
-            <div class="error-banner">
-              <ion-note color="danger">{{ errorMessage() }}</ion-note>
-            </div>
+          <div class="error-banner">
+            <ion-note color="danger">{{ errorMessage() }}</ion-note>
+          </div>
           }
 
           <ion-item lines="full" class="form-item">
@@ -44,17 +44,10 @@
           </ion-item>
 
           <div class="submit-section">
-            <ion-button
-              type="submit"
-              expand="block"
-              [disabled]="loading()"
-              class="login-button"
-            >
+            <ion-button type="submit" expand="block" [disabled]="loading()" class="login-button">
               @if (loading()) {
-                <ion-spinner name="crescent"></ion-spinner>
-              } @else {
-                Ingresar al Sistema
-              }
+              <ion-spinner name="crescent"></ion-spinner>
+              } @else { Ingresar al Sistema }
             </ion-button>
           </div>
         </form>

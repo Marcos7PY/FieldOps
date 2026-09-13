@@ -6,7 +6,7 @@ import { AuthResponse, LoginRequest, RefreshTokenRequest, User } from '../models
 import { IS_REFRESH_REQUEST } from '../interceptors/auth.interceptor';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
   private static readonly REFRESH_TOKEN_KEY = 'fieldops_refresh_token';
@@ -36,13 +36,13 @@ export class AuthService {
 
   hasAnyRole(requiredRoles: string[]): boolean {
     const roles = this._currentUser()?.roles ?? [];
-    return requiredRoles.some(r => roles.includes(r));
+    return requiredRoles.some((r) => roles.includes(r));
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/auth/login`, credentials).pipe(
-      tap(response => this.setSession(response))
-    );
+    return this.http
+      .post<AuthResponse>(`${environment.apiBaseUrl}/auth/login`, credentials)
+      .pipe(tap((response) => this.setSession(response)));
   }
 
   private refreshInProgress$: Observable<AuthResponse> | null = null;
@@ -61,21 +61,19 @@ export class AuthService {
     const payload: RefreshTokenRequest = { refreshToken: refresh };
     const context = new HttpContext().set(IS_REFRESH_REQUEST, true);
 
-    this.refreshInProgress$ = this.http.post<AuthResponse>(
-      `${environment.apiBaseUrl}/auth/refresh`,
-      payload,
-      { context }
-    ).pipe(
-      tap(response => this.setSession(response)),
-      catchError(error => {
-        this.clearSession();
-        return throwError(() => error);
-      }),
-      finalize(() => {
-        this.refreshInProgress$ = null;
-      }),
-      shareReplay(1)
-    );
+    this.refreshInProgress$ = this.http
+      .post<AuthResponse>(`${environment.apiBaseUrl}/auth/refresh`, payload, { context })
+      .pipe(
+        tap((response) => this.setSession(response)),
+        catchError((error) => {
+          this.clearSession();
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.refreshInProgress$ = null;
+        }),
+        shareReplay(1)
+      );
 
     return this.refreshInProgress$;
   }
@@ -86,9 +84,9 @@ export class AuthService {
 
     if (refresh) {
       const payload: RefreshTokenRequest = { refreshToken: refresh };
-      return this.http.post<void>(`${environment.apiBaseUrl}/auth/logout`, payload).pipe(
-        catchError(() => of(undefined))
-      );
+      return this.http
+        .post<void>(`${environment.apiBaseUrl}/auth/logout`, payload)
+        .pipe(catchError(() => of(undefined)));
     }
 
     return of(undefined);
@@ -102,7 +100,7 @@ export class AuthService {
     }
 
     return this.refreshToken().pipe(
-      map(res => res.user),
+      map((res) => res.user),
       catchError(() => of(null))
     );
   }

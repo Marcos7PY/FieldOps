@@ -21,7 +21,7 @@ import {
   IonProgressBar,
   IonSpinner,
   IonTitle,
-  IonToolbar
+  IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { WorkOrder } from '../../../core/models';
@@ -42,7 +42,7 @@ import {
   callOutline,
   playOutline,
   syncOutline,
-  timeOutline
+  timeOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -69,8 +69,8 @@ import {
     IonItem,
     IonLabel,
     IonSpinner,
-    IonProgressBar
-  ]
+    IonProgressBar,
+  ],
 })
 export class OrderDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -103,7 +103,7 @@ export class OrderDetailPage implements OnInit {
       callOutline,
       playOutline,
       syncOutline,
-      timeOutline
+      timeOutline,
     });
   }
 
@@ -131,34 +131,36 @@ export class OrderDetailPage implements OnInit {
     const metadata = {
       latitude: coords?.latitude,
       longitude: coords?.longitude,
-      capturedAt: new Date().toISOString()
+      capturedAt: new Date().toISOString(),
     };
 
     const filename = `evidence-${Date.now()}.${photo.format || 'jpg'}`;
 
-    this.workOrderService.uploadEvidenceWithProgress(ord.id, photo.blob, filename, metadata).subscribe({
-      next: (state) => {
-        this.uploadProgress.set(state.progress);
-        if (state.response) {
-          const newEvidence = state.response;
-          const updatedEvidences = [...(ord.evidences || []), newEvidence];
-          this.order.set({ ...ord, evidences: updatedEvidences });
+    this.workOrderService
+      .uploadEvidenceWithProgress(ord.id, photo.blob, filename, metadata)
+      .subscribe({
+        next: (state) => {
+          this.uploadProgress.set(state.progress);
+          if (state.response) {
+            const newEvidence = state.response;
+            const updatedEvidences = [...(ord.evidences || []), newEvidence];
+            this.order.set({ ...ord, evidences: updatedEvidences });
+            this.uploadingEvidence.set(false);
+            this.uploadProgress.set(null);
+            this.currentPhoto.set(null);
+          }
+        },
+        error: async () => {
           this.uploadingEvidence.set(false);
           this.uploadProgress.set(null);
-          this.currentPhoto.set(null);
-        }
-      },
-      error: async () => {
-        this.uploadingEvidence.set(false);
-        this.uploadProgress.set(null);
-        const alert = await this.alertController.create({
-          header: 'Error de Subida',
-          message: 'No fue posible subir la evidencia fotográfica. Intente nuevamente.',
-          buttons: ['Aceptar']
-        });
-        await alert.present();
-      }
-    });
+          const alert = await this.alertController.create({
+            header: 'Error de Subida',
+            message: 'No fue posible subir la evidencia fotográfica. Intente nuevamente.',
+            buttons: ['Aceptar'],
+          });
+          await alert.present();
+        },
+      });
   }
 
   ngOnInit(): void {
@@ -199,7 +201,7 @@ export class OrderDetailPage implements OnInit {
           this.errorMessage.set('Error al cargar los detalles de la orden');
         }
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -220,43 +222,51 @@ export class OrderDetailPage implements OnInit {
       this.updatingStatus.set(false);
       const alert = await this.alertController.create({
         header: 'Guardado Sin Conexión',
-        message: 'El inicio de labores se registró localmente. Se sincronizará automáticamente al recuperar la conexión.',
-        buttons: ['Entendido']
+        message:
+          'El inicio de labores se registró localmente. Se sincronizará automáticamente al recuperar la conexión.',
+        buttons: ['Entendido'],
       });
       await alert.present();
       return;
     }
 
-    this.workOrderService.changeStatus(current.id, {
-      newStatus: 'IN_PROGRESS',
-      notes: 'Inicio de labores reportado desde app móvil'
-    }, current.version).subscribe({
-      next: (updated) => {
-        this.order.set(updated);
-        this.updatingStatus.set(false);
-      },
-      error: async (err) => {
-        if (err.status === 0) {
-          await this.offlineQueue.queueStatusChange(
-            current.id,
-            'IN_PROGRESS',
-            'Inicio de labores reportado tras pérdida de red',
-            current.version
-          );
-          this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
+    this.workOrderService
+      .changeStatus(
+        current.id,
+        {
+          newStatus: 'IN_PROGRESS',
+          notes: 'Inicio de labores reportado desde app móvil',
+        },
+        current.version
+      )
+      .subscribe({
+        next: (updated) => {
+          this.order.set(updated);
           this.updatingStatus.set(false);
-          const alert = await this.alertController.create({
-            header: 'Guardado Local',
-            message: 'Se perdió la conexión. La operación fue guardada en la cola de sincronización.',
-            buttons: ['Entendido']
-          });
-          await alert.present();
-        } else {
-          this.updatingStatus.set(false);
-          await this.handleStatusError(err);
-        }
-      }
-    });
+        },
+        error: async (err) => {
+          if (err.status === 0) {
+            await this.offlineQueue.queueStatusChange(
+              current.id,
+              'IN_PROGRESS',
+              'Inicio de labores reportado tras pérdida de red',
+              current.version
+            );
+            this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
+            this.updatingStatus.set(false);
+            const alert = await this.alertController.create({
+              header: 'Guardado Local',
+              message:
+                'Se perdió la conexión. La operación fue guardada en la cola de sincronización.',
+              buttons: ['Entendido'],
+            });
+            await alert.present();
+          } else {
+            this.updatingStatus.set(false);
+            await this.handleStatusError(err);
+          }
+        },
+      });
   }
 
   async promptCompleteWork(): Promise<void> {
@@ -270,21 +280,21 @@ export class OrderDetailPage implements OnInit {
         {
           name: 'notes',
           type: 'textarea',
-          placeholder: 'Detalle del trabajo realizado...'
-        }
+          placeholder: 'Detalle del trabajo realizado...',
+        },
       ],
       buttons: [
         {
           text: 'Cancelar',
-          role: 'cancel'
+          role: 'cancel',
         },
         {
           text: 'Completar',
           handler: (data) => {
             this.completeWork(data.notes || 'Trabajo completado satisfactoriamente');
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
 
     await alert.present();
@@ -312,43 +322,51 @@ export class OrderDetailPage implements OnInit {
       this.updatingStatus.set(false);
       const alert = await this.alertController.create({
         header: 'Guardado Sin Conexión',
-        message: 'El cierre de orden se guardó localmente. Se sincronizará automáticamente al recuperar la conexión.',
-        buttons: ['Entendido']
+        message:
+          'El cierre de orden se guardó localmente. Se sincronizará automáticamente al recuperar la conexión.',
+        buttons: ['Entendido'],
       });
       await alert.present();
       return;
     }
 
-    this.workOrderService.changeStatus(current.id, {
-      newStatus: 'COMPLETED',
-      notes: finalNotes
-    }, current.version).subscribe({
-      next: (updated) => {
-        this.order.set(updated);
-        this.updatingStatus.set(false);
-      },
-      error: async (err) => {
-        if (err.status === 0) {
-          await this.offlineQueue.queueStatusChange(
-            current.id,
-            'COMPLETED',
-            finalNotes,
-            current.version
-          );
-          this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
+    this.workOrderService
+      .changeStatus(
+        current.id,
+        {
+          newStatus: 'COMPLETED',
+          notes: finalNotes,
+        },
+        current.version
+      )
+      .subscribe({
+        next: (updated) => {
+          this.order.set(updated);
           this.updatingStatus.set(false);
-          const alert = await this.alertController.create({
-            header: 'Guardado Local',
-            message: 'Se perdió la conexión. El cierre fue guardado en la cola de sincronización.',
-            buttons: ['Entendido']
-          });
-          await alert.present();
-        } else {
-          this.updatingStatus.set(false);
-          await this.handleStatusError(err);
-        }
-      }
-    });
+        },
+        error: async (err) => {
+          if (err.status === 0) {
+            await this.offlineQueue.queueStatusChange(
+              current.id,
+              'COMPLETED',
+              finalNotes,
+              current.version
+            );
+            this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
+            this.updatingStatus.set(false);
+            const alert = await this.alertController.create({
+              header: 'Guardado Local',
+              message:
+                'Se perdió la conexión. El cierre fue guardado en la cola de sincronización.',
+              buttons: ['Entendido'],
+            });
+            await alert.present();
+          } else {
+            this.updatingStatus.set(false);
+            await this.handleStatusError(err);
+          }
+        },
+      });
   }
 
   private mapLocalToWorkOrder(local: any): WorkOrder {
@@ -367,7 +385,7 @@ export class OrderDetailPage implements OnInit {
         phone: local.clientPhone,
         latitude: local.clientLatitude,
         longitude: local.clientLongitude,
-        active: true
+        active: true,
       },
       assignedTechnicianId: local.assignedTechnicianId,
       createdBy: 1,
@@ -377,14 +395,15 @@ export class OrderDetailPage implements OnInit {
       completedAt: local.completedAt,
       version: local.version,
       evidences: [],
-      statusHistory: []
+      statusHistory: [],
     };
   }
 
   private async handleStatusError(err: any): Promise<void> {
     let message = 'No se pudo actualizar el estado de la orden.';
     if (err.status === 412 || err.status === 409) {
-      message = 'Conflicto de concurrencia: la orden fue modificada por otro usuario. Se recargarán los datos actualizados.';
+      message =
+        'Conflicto de concurrencia: la orden fue modificada por otro usuario. Se recargarán los datos actualizados.';
       const current = this.order();
       if (current) {
         this.loadOrderDetail(current.id);
@@ -396,7 +415,7 @@ export class OrderDetailPage implements OnInit {
     const alert = await this.alertController.create({
       header: 'Error de actualización',
       message,
-      buttons: ['Aceptar']
+      buttons: ['Aceptar'],
     });
     await alert.present();
   }

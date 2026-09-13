@@ -5,16 +5,14 @@ import { environment } from '../../../environments/environment';
 import { Client, CreateClientRequest, Page } from '../models';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ClientsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/clients`;
 
   getClients(page = 0, size = 50): Observable<Page<Client>> {
-    const params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
+    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
     return this.http.get<Page<Client>>(this.baseUrl, { params });
   }
 

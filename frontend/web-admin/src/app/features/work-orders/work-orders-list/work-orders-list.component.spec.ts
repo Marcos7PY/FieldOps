@@ -24,7 +24,7 @@ describe('WorkOrdersListComponent', () => {
     assignedTechnicianId: 2,
     createdAt: '2026-09-13T10:00:00',
     scheduledAt: '2026-09-14T14:00:00',
-    version: 1
+    version: 1,
   };
 
   const mockPage: Page<WorkOrderSummary> = {
@@ -33,7 +33,7 @@ describe('WorkOrdersListComponent', () => {
     size: 10,
     totalElements: 1,
     totalPages: 1,
-    last: true
+    last: true,
   };
 
   beforeEach(async () => {
@@ -43,8 +43,8 @@ describe('WorkOrdersListComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        provideNoopAnimations()
-      ]
+        provideNoopAnimations(),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(WorkOrdersListComponent);
@@ -60,7 +60,9 @@ describe('WorkOrdersListComponent', () => {
   it('should create and load initial orders', () => {
     fixture.detectChanges();
 
-    const req = httpMock.expectOne(request => request.url === `${environment.apiBaseUrl}/work-orders`);
+    const req = httpMock.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/work-orders`
+    );
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('page')).toBe('0');
     expect(req.request.params.get('size')).toBe('10');
@@ -76,15 +78,19 @@ describe('WorkOrdersListComponent', () => {
     vi.useFakeTimers();
     try {
       fixture.detectChanges();
-      const initialReq = httpMock.expectOne(request => request.url === `${environment.apiBaseUrl}/work-orders`);
+      const initialReq = httpMock.expectOne(
+        (request) => request.url === `${environment.apiBaseUrl}/work-orders`
+      );
       initialReq.flush(mockPage);
 
       component.searchControl.setValue('preventivo');
       vi.advanceTimersByTime(150);
-      httpMock.expectNone(request => request.urlWithParams.includes('search=preventivo'));
+      httpMock.expectNone((request) => request.urlWithParams.includes('search=preventivo'));
 
       vi.advanceTimersByTime(160);
-      const searchReq = httpMock.expectOne(request => request.urlWithParams.includes('search=preventivo'));
+      const searchReq = httpMock.expectOne((request) =>
+        request.urlWithParams.includes('search=preventivo')
+      );
       expect(searchReq.request.method).toBe('GET');
       searchReq.flush(mockPage);
     } finally {
@@ -94,12 +100,16 @@ describe('WorkOrdersListComponent', () => {
 
   it('should reload orders on status filter change', () => {
     fixture.detectChanges();
-    const initialReq = httpMock.expectOne(request => request.url === `${environment.apiBaseUrl}/work-orders`);
+    const initialReq = httpMock.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/work-orders`
+    );
     initialReq.flush(mockPage);
 
     component.statusControl.setValue('IN_PROGRESS');
 
-    const statusReq = httpMock.expectOne(request => request.urlWithParams.includes('status=IN_PROGRESS'));
+    const statusReq = httpMock.expectOne((request) =>
+      request.urlWithParams.includes('status=IN_PROGRESS')
+    );
     expect(statusReq.request.method).toBe('GET');
     statusReq.flush(mockPage);
 
@@ -108,19 +118,22 @@ describe('WorkOrdersListComponent', () => {
 
   it('should handle pagination changes', () => {
     fixture.detectChanges();
-    const initialReq = httpMock.expectOne(request => request.url === `${environment.apiBaseUrl}/work-orders`);
+    const initialReq = httpMock.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/work-orders`
+    );
     initialReq.flush(mockPage);
 
     component.onPageChange({
       pageIndex: 2,
       pageSize: 20,
-      length: 50
+      length: 50,
     });
 
-    const pageReq = httpMock.expectOne(request =>
-      request.url === `${environment.apiBaseUrl}/work-orders` &&
-      request.params.get('page') === '2' &&
-      request.params.get('size') === '20'
+    const pageReq = httpMock.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/work-orders` &&
+        request.params.get('page') === '2' &&
+        request.params.get('size') === '20'
     );
     expect(pageReq.request.method).toBe('GET');
     pageReq.flush(mockPage);
