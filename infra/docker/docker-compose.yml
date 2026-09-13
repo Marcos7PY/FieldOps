@@ -1,4 +1,4 @@
-name: fieldops
+﻿name: fieldops
 
 services:
   sqlserver:
@@ -104,6 +104,24 @@ services:
     networks:
       - fieldops-net
 
+  api-gateway:
+    build:
+      context: ../../backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: fieldops-api-gateway
+    depends_on:
+      auth-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      AUTH_SERVICE_URL: http://auth-service:8081
+      ORDERS_SERVICE_URL: http://orders-service:8082
+      ANALYTICS_SERVICE_URL: http://analytics-service:8084
+    networks:
+      - fieldops-net
+
   auth-service:
     build:
       context: ../../backend/auth-service
@@ -145,6 +163,52 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     volumes:
       - ${UPLOADS_PATH:-../../uploads}:/app/uploads
+    networks:
+      - fieldops-net
+
+  notification-service:
+    build:
+      context: ../../backend/notification-service
+      dockerfile: Dockerfile
+    container_name: fieldops-notification-service
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_notifications;encrypt=true;trustServerCertificate=true
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+    networks:
+      - fieldops-net
+
+  analytics-service:
+    build:
+      context: ../../backend/analytics-service
+      dockerfile: Dockerfile
+    container_name: fieldops-analytics-service
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_analytics;encrypt=true;trustServerCertificate=true
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     networks:
       - fieldops-net
 
