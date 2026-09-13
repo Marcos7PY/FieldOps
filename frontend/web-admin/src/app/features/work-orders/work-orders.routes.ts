@@ -9,4 +9,8 @@ export const WORK_ORDERS_ROUTES: Routes = [
     path: 'new',
     loadComponent: () => import('./work-order-create/work-order-create.component').then(m => m.WorkOrderCreateComponent),
   },
+  {
+    path: ':id',
+    loadComponent: () => import('./work-order-detail/work-order-detail.component').then(m => m.WorkOrderDetailComponent),
+  },
 ];
