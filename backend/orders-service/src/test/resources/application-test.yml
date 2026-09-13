@@ -11,3 +11,12 @@ spring:
     enabled: true
     placeholders:
       outbox_filter: ""
+  kafka:
+    bootstrap-servers: localhost:9092
+    properties:
+      schema.registry.url: mock://test-schema-registry
+
+fieldops:
+  outbox:
+    publisher:
+      enabled: false

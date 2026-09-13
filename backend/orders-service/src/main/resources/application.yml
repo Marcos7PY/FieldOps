@@ -23,6 +23,19 @@ spring:
     baseline-on-migrate: true
     placeholders:
       outbox_filter: "WHERE published_at IS NULL"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      acks: all
+      retries: 2147483647
+      compression-type: snappy
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8090}
 
 server:
   port: 8082
