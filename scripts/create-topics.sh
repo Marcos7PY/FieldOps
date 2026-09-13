@@ -1,9 +1,9 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
+export MSYS_NO_PATHCONV=1
 
-BROKER="${KAFKA_BROKER:-localhost:9092}"
-TOPIC="fieldops.work-orders.events"
-DLT="fieldops.work-orders.events-dlt"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/infra/docker/docker-compose.yml}"
 
 create_topic() {
   local name="$1" partitions="$2" retention="$3"

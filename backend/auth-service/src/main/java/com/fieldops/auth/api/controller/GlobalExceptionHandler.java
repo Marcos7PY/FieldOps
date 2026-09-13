@@ -60,8 +60,11 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnhandledException(Exception ex) {
+        log.error("Unhandled exception in auth-service: ", ex);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected internal error occurred"

@@ -1,8 +1,9 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
+export MSYS_NO_PATHCONV=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="$ROOT/infra/docker/docker-compose.yml"
+export COMPOSE_FILE="$ROOT/infra/docker/docker-compose.yml"
 
 echo "=== Iniciando entorno FieldOps ==="
 

@@ -1,69 +1,49 @@
-﻿USE fieldops_orders;
+USE fieldops_orders;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
 
--- Clientes de demostración
-IF NOT EXISTS (SELECT 1 FROM clients WHERE email = 'contacto@acmeindustrias.com')
+IF NOT EXISTS (SELECT 1 FROM client WHERE tax_id = 'B-12345678')
 BEGIN
-    INSERT INTO clients (name, email, phone, address, created_at)
-    VALUES ('Acme Industrias S.A.', 'contacto@acmeindustrias.com', '+34 912 345 678', 'Parque Tecnológico Nave 12, Madrid', GETDATE());
+    INSERT INTO client (business_name, tax_id, address, latitude, longitude, phone, active)
+    VALUES ('Acme Industrias S.A.', 'B-12345678', 'Parque Tecnológico Nave 12, Madrid', 40.416775, -3.703790, '+34 912 345 678', 1);
 END;
 
-IF NOT EXISTS (SELECT 1 FROM clients WHERE email = 'mantenimiento@logisticsiberia.com')
+IF NOT EXISTS (SELECT 1 FROM client WHERE tax_id = 'B-87654321')
 BEGIN
-    INSERT INTO clients (name, email, phone, address, created_at)
-    VALUES ('Logistics Iberia S.L.', 'mantenimiento@logisticsiberia.com', '+34 934 567 890', 'Av. del Puerto 45, Barcelona', GETDATE());
+    INSERT INTO client (business_name, tax_id, address, latitude, longitude, phone, active)
+    VALUES ('Logistics Iberia S.L.', 'B-87654321', 'Av. del Puerto 45, Barcelona', 41.385064, 2.173404, '+34 934 567 890', 1);
 END;
 
-IF NOT EXISTS (SELECT 1 FROM clients WHERE email = 'soporte@retailexpress.es')
+IF NOT EXISTS (SELECT 1 FROM client WHERE tax_id = 'B-11223344')
 BEGIN
-    INSERT INTO clients (name, email, phone, address, created_at)
-    VALUES ('Retail Express Distribución', 'soporte@retailexpress.es', '+34 963 852 741', 'Polígono Industrial Este Calle 4, Valencia', GETDATE());
+    INSERT INTO client (business_name, tax_id, address, latitude, longitude, phone, active)
+    VALUES ('Retail Express Distribución', 'B-11223344', 'Polígono Industrial Este Calle 4, Valencia', 39.469907, -0.376288, '+34 963 852 741', 1);
 END;
 
--- Técnicos de demostración (vinculados a los usuarios de auth-service)
-IF NOT EXISTS (SELECT 1 FROM technicians WHERE user_id = 2)
+DECLARE @ClientId1 BIGINT = (SELECT TOP 1 id FROM client WHERE tax_id = 'B-12345678');
+DECLARE @ClientId2 BIGINT = (SELECT TOP 1 id FROM client WHERE tax_id = 'B-87654321');
+DECLARE @ClientId3 BIGINT = (SELECT TOP 1 id FROM client WHERE tax_id = 'B-11223344');
+
+IF NOT EXISTS (SELECT 1 FROM work_order WHERE code = 'WO-2026-0001')
 BEGIN
-    INSERT INTO technicians (user_id, full_name, specialty, active, created_at)
-    VALUES (2, 'Carlos Tecnico 1', 'Electromecánica y Climatización', 1, GETDATE());
+    INSERT INTO work_order (code, title, description, client_id, assigned_technician_id, created_by, status, priority, scheduled_at, started_at, completed_at, created_at, version)
+    VALUES ('WO-2026-0001', 'Mantenimiento preventivo de grupo electrógeno', 'Revisión periódica y cambio de filtros del generador principal.', @ClientId1, 2, 1, 'ASSIGNED', 'HIGH', DATEADD(hour, 2, GETDATE()), NULL, NULL, GETDATE(), 0);
 END;
 
-IF NOT EXISTS (SELECT 1 FROM technicians WHERE user_id = 3)
+IF NOT EXISTS (SELECT 1 FROM work_order WHERE code = 'WO-2026-0002')
 BEGIN
-    INSERT INTO technicians (user_id, full_name, specialty, active, created_at)
-    VALUES (3, 'Ana Tecnico 2', 'Telecomunicaciones y Redes', 1, GETDATE());
+    INSERT INTO work_order (code, title, description, client_id, assigned_technician_id, created_by, status, priority, scheduled_at, started_at, completed_at, created_at, version)
+    VALUES ('WO-2026-0002', 'Reparación de switch troncal de comunicaciones', 'Pérdida intermitente de paquetes en enlace de fibra nave 3.', @ClientId2, 3, 1, 'IN_PROGRESS', 'CRITICAL', DATEADD(hour, -2, GETDATE()), DATEADD(hour, -1, GETDATE()), NULL, DATEADD(hour, -3, GETDATE()), 0);
 END;
 
-IF NOT EXISTS (SELECT 1 FROM technicians WHERE user_id = 4)
+IF NOT EXISTS (SELECT 1 FROM work_order WHERE code = 'WO-2026-0003')
 BEGIN
-    INSERT INTO technicians (user_id, full_name, specialty, active, created_at)
-    VALUES (4, 'Luis Tecnico 3', 'Sistemas Hidráulicos y Neumáticos', 1, GETDATE());
+    INSERT INTO work_order (code, title, description, client_id, assigned_technician_id, created_by, status, priority, scheduled_at, started_at, completed_at, created_at, version)
+    VALUES ('WO-2026-0003', 'Calibración de sensores de temperatura en cámara fría', 'Ajuste termométrico y verificación de sondas PT100.', @ClientId1, 2, 1, 'COMPLETED', 'MEDIUM', DATEADD(day, -1, GETDATE()), DATEADD(hour, -20, GETDATE()), DATEADD(hour, -18, GETDATE()), DATEADD(day, -1, GETDATE()), 0);
 END;
 
--- Órdenes de demostración en diversos estados
-DECLARE @ClientId1 BIGINT = (SELECT TOP 1 id FROM clients WHERE email = 'contacto@acmeindustrias.com');
-DECLARE @ClientId2 BIGINT = (SELECT TOP 1 id FROM clients WHERE email = 'mantenimiento@logisticsiberia.com');
-DECLARE @TechId1 BIGINT = (SELECT TOP 1 id FROM technicians WHERE user_id = 2);
-DECLARE @TechId2 BIGINT = (SELECT TOP 1 id FROM technicians WHERE user_id = 3);
-
-IF NOT EXISTS (SELECT 1 FROM work_orders WHERE code = 'WO-2026-0001')
+IF NOT EXISTS (SELECT 1 FROM work_order WHERE code = 'WO-2026-0004')
 BEGIN
-    INSERT INTO work_orders (code, title, description, client_id, assigned_technician_id, status, priority, scheduled_at, started_at, completed_at, created_at, updated_at)
-    VALUES ('WO-2026-0001', 'Mantenimiento preventivo de grupo electrógeno', 'Revisión periódica y cambio de filtros del generador principal.', @ClientId1, @TechId1, 'ASSIGNED', 'HIGH', DATEADD(hour, 2, GETDATE()), NULL, NULL, GETDATE(), GETDATE());
-END;
-
-IF NOT EXISTS (SELECT 1 FROM work_orders WHERE code = 'WO-2026-0002')
-BEGIN
-    INSERT INTO work_orders (code, title, description, client_id, assigned_technician_id, status, priority, scheduled_at, started_at, completed_at, created_at, updated_at)
-    VALUES ('WO-2026-0002', 'Reparación de switch troncal de comunicaciones', 'Pérdida intermitente de paquetes en enlace de fibra nave 3.', @ClientId2, @TechId2, 'IN_PROGRESS', 'CRITICAL', DATEADD(hour, -2, GETDATE()), DATEADD(hour, -1, GETDATE()), NULL, DATEADD(hour, -3, GETDATE()), GETDATE());
-END;
-
-IF NOT EXISTS (SELECT 1 FROM work_orders WHERE code = 'WO-2026-0003')
-BEGIN
-    INSERT INTO work_orders (code, title, description, client_id, assigned_technician_id, status, priority, scheduled_at, started_at, completed_at, created_at, updated_at)
-    VALUES ('WO-2026-0003', 'Calibración de sensores de temperatura en cámara fría', 'Ajuste termométrico y verificación de sondas PT100.', @ClientId1, @TechId1, 'COMPLETED', 'MEDIUM', DATEADD(day, -1, GETDATE()), DATEADD(hour, -20, GETDATE()), DATEADD(hour, -18, GETDATE()), DATEADD(day, -1, GETDATE()), DATEADD(hour, -18, GETDATE()));
-END;
-
-IF NOT EXISTS (SELECT 1 FROM work_orders WHERE code = 'WO-2026-0004')
-BEGIN
-    INSERT INTO work_orders (code, title, description, client_id, assigned_technician_id, status, priority, scheduled_at, started_at, completed_at, created_at, updated_at)
-    VALUES ('WO-2026-0004', 'Inspección de compresor de aire comprimido', 'Revisión de presión y purga de condensados en línea de montaje.', @ClientId2, NULL, 'DRAFT', 'LOW', DATEADD(day, 1, GETDATE()), NULL, NULL, GETDATE(), GETDATE());
+    INSERT INTO work_order (code, title, description, client_id, assigned_technician_id, created_by, status, priority, scheduled_at, started_at, completed_at, created_at, version)
+    VALUES ('WO-2026-0004', 'Inspección de compresor de aire comprimido', 'Revisión de presión y purga de condensados en línea de montaje.', @ClientId2, NULL, 1, 'DRAFT', 'LOW', DATEADD(day, 1, GETDATE()), NULL, NULL, GETDATE(), 0);
 END;
