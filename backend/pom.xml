@@ -10,8 +10,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>orders-service</module>
+        <module>api-gateway</module>
         <module>auth-service</module>
+        <module>orders-service</module>
     </modules>
 
     <properties>
