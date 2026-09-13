@@ -1,6 +1,8 @@
 package com.fieldops.orders;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.DockerClientFactory;
@@ -8,6 +10,9 @@ import org.testcontainers.containers.MSSQLServerContainer;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
+
+    @MockBean
+    protected JwtDecoder jwtDecoder;
 
     protected static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER;
 

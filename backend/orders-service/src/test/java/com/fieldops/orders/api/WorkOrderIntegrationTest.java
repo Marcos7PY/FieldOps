@@ -14,14 +14,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -40,6 +44,16 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private RequestPostProcessor supervisor() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_SUPERVISOR"))
+                .jwt(j -> j.claim("userId", 1L).claim("roles", List.of("ROLE_SUPERVISOR")));
+    }
+
+    private RequestPostProcessor technician(Long technicianId) {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_TECHNICIAN"))
+                .jwt(j -> j.claim("userId", technicianId).claim("roles", List.of("ROLE_TECHNICIAN")));
+    }
+
     @Test
     void completeOrderLifecycleFlow() throws Exception {
         CreateClientRequest clientReq = new CreateClientRequest(
@@ -52,6 +66,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
         );
 
         MvcResult clientResult = mockMvc.perform(post("/api/v1/clients")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(clientReq)))
                 .andExpect(status().isCreated())
@@ -71,6 +86,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
         );
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/work-orders")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-User-Id", 1)
                         .header("X-User-Role", "ROLE_SUPERVISOR")
@@ -91,6 +107,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
         );
 
         MvcResult assignResult = mockMvc.perform(patch("/api/v1/work-orders/{id}/assign", orderId)
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-User-Id", 1)
                         .header("X-User-Role", "ROLE_SUPERVISOR")
@@ -106,6 +123,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
 
         ChangeStatusRequest startReq = new ChangeStatusRequest(OrderStatus.IN_PROGRESS, "Arrived on site");
         MvcResult startResult = mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
+                        .with(technician(42L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-User-Id", 42)
                         .header("X-User-Role", "ROLE_TECHNICIAN")
@@ -128,6 +146,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(multipart("/api/v1/work-orders/{id}/evidence", orderId)
                         .file(file)
+                        .with(technician(42L))
                         .header("X-User-Id", 42)
                         .header("X-User-Role", "ROLE_TECHNICIAN"))
                 .andExpect(status().isCreated())
@@ -136,6 +155,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
 
         ChangeStatusRequest completeReq = new ChangeStatusRequest(OrderStatus.COMPLETED, "Equipment fully tested");
         mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
+                        .with(technician(42L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-User-Id", 42)
                         .header("X-User-Role", "ROLE_TECHNICIAN")
@@ -145,7 +165,8 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.completedAt").isNotEmpty());
 
-        mockMvc.perform(get("/api/v1/work-orders/metrics"))
+        mockMvc.perform(get("/api/v1/work-orders/metrics")
+                        .with(supervisor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalOrders").isNumber())
                 .andExpect(jsonPath("$.ordersByStatus.COMPLETED").isNumber());
@@ -159,6 +180,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 null, null, null, null
         );
         MvcResult cr = mockMvc.perform(post("/api/v1/clients")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(clientReq)))
                 .andExpect(status().isCreated())
@@ -175,6 +197,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 null
         );
         MvcResult or = mockMvc.perform(post("/api/v1/work-orders")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderReq)))
                 .andExpect(status().isCreated())
@@ -184,6 +207,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
 
         ChangeStatusRequest skipReq = new ChangeStatusRequest(OrderStatus.COMPLETED, "Trying to skip from DRAFT");
         mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("If-Match", "\"0\"")
                         .header("X-User-Role", "ROLE_SUPERVISOR")
@@ -200,6 +224,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 null, null, null, null
         );
         MvcResult cr = mockMvc.perform(post("/api/v1/clients")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(clientReq)))
                 .andExpect(status().isCreated())
@@ -216,6 +241,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 null
         );
         MvcResult or = mockMvc.perform(post("/api/v1/work-orders")
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderReq)))
                 .andExpect(status().isCreated())
@@ -225,6 +251,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
 
         ChangeStatusRequest cancelReq = new ChangeStatusRequest(OrderStatus.CANCELLED, "Supervisor cancelling");
         mockMvc.perform(patch("/api/v1/work-orders/{id}/status", orderId)
+                        .with(supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("If-Match", "\"999\"")
                         .header("X-User-Role", "ROLE_SUPERVISOR")

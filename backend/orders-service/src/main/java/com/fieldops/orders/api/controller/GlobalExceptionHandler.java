@@ -71,11 +71,23 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(com.fieldops.orders.domain.exception.AccessDeniedException.class)
-    public ProblemDetail handleAccessDenied(com.fieldops.orders.domain.exception.AccessDeniedException ex) {
+    @ExceptionHandler({
+            com.fieldops.orders.domain.exception.AccessDeniedException.class,
+            org.springframework.security.access.AccessDeniedException.class
+    })
+    public ProblemDetail handleAccessDenied(Exception ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problem.setTitle("Access Denied");
         problem.setType(URI.create("https://fieldops.com/errors/access-denied"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ProblemDetail handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Unauthorized");
+        problem.setType(URI.create("https://fieldops.com/errors/unauthorized"));
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }
