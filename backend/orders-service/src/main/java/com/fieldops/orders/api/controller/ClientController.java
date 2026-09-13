@@ -42,8 +42,8 @@ public class ClientController {
 
     @GetMapping
     public ResponseEntity<PageResponse<ClientResponse>> getClients(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size
     ) {
         int boundedSize = Math.min(Math.max(1, size), 100);
         Pageable pageable = PageRequest.of(page, boundedSize, Sort.by(Sort.Direction.ASC, "businessName"));
@@ -51,7 +51,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClientResponse> getClientById(@PathVariable Long id) {
+    public ResponseEntity<ClientResponse> getClientById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(clientService.getClientById(id));
     }
 }

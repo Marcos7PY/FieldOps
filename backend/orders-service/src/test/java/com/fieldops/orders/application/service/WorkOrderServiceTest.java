@@ -31,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +66,8 @@ class WorkOrderServiceTest {
                 codeGenerator,
                 mapper
         );
+        lenient().when(workOrderRepository.saveAndFlush(any(WorkOrder.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private WorkOrder createSampleOrder(Long id, OrderStatus status, Long technicianId, Long version) {

@@ -66,15 +66,15 @@ public class WorkOrderController {
 
     @GetMapping
     public ResponseEntity<PageResponse<WorkOrderSummaryResponse>> getWorkOrders(
-            @RequestParam(required = false) OrderStatus status,
-            @RequestParam(required = false) Long technicianId,
-            @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(value = "status", required = false) OrderStatus status,
+            @RequestParam(value = "technicianId", required = false) Long technicianId,
+            @RequestParam(value = "clientId", required = false) Long clientId,
+            @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Role", defaultValue = "ROLE_SUPERVISOR") String role
     ) {
@@ -96,20 +96,20 @@ public class WorkOrderController {
 
     @GetMapping("/{id}")
     public ResponseEntity<WorkOrderResponse> getWorkOrderById(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Role", defaultValue = "ROLE_SUPERVISOR") String role
     ) {
         boolean isSupervisor = "ROLE_SUPERVISOR".equalsIgnoreCase(role);
         WorkOrderResponse response = workOrderService.getWorkOrderById(id, userId, isSupervisor);
         return ResponseEntity.ok()
-                .eTag(String.valueOf(response.version()))
+                .eTag("\"" + response.version() + "\"")
                 .body(response);
     }
 
     @PatchMapping("/{id}/assign")
     public ResponseEntity<WorkOrderResponse> assignWorkOrder(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody AssignWorkOrderRequest request,
             @RequestHeader(value = "If-Match", required = false) String ifMatch,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long supervisorId
@@ -117,13 +117,13 @@ public class WorkOrderController {
         Long expectedVersion = parseVersion(ifMatch);
         WorkOrderResponse response = workOrderService.assignWorkOrder(id, request, supervisorId, expectedVersion);
         return ResponseEntity.ok()
-                .eTag(String.valueOf(response.version()))
+                .eTag("\"" + response.version() + "\"")
                 .body(response);
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<WorkOrderResponse> changeStatus(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ChangeStatusRequest request,
             @RequestHeader(value = "If-Match") String ifMatch,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
@@ -136,13 +136,13 @@ public class WorkOrderController {
         boolean isSupervisor = "ROLE_SUPERVISOR".equalsIgnoreCase(role);
         WorkOrderResponse response = workOrderService.changeStatus(id, request, userId, isSupervisor, expectedVersion);
         return ResponseEntity.ok()
-                .eTag(String.valueOf(response.version()))
+                .eTag("\"" + response.version() + "\"")
                 .body(response);
     }
 
     @PostMapping(value = "/{id}/evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EvidenceResponse> uploadEvidence(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "metadata", required = false) EvidenceMetadata metadata,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long technicianId
@@ -157,7 +157,7 @@ public class WorkOrderController {
 
     @GetMapping("/{id}/evidence")
     public ResponseEntity<List<EvidenceResponse>> getEvidences(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Role", defaultValue = "ROLE_SUPERVISOR") String role
     ) {

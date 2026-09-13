@@ -136,7 +136,8 @@ public class WorkOrderService {
             order.getStatusHistory().add(history);
         }
 
-        return mapper.toResponse(order);
+        WorkOrder saved = workOrderRepository.saveAndFlush(order);
+        return mapper.toResponse(saved);
     }
 
     public WorkOrderResponse changeStatus(
@@ -195,7 +196,8 @@ public class WorkOrderService {
         historyRepository.save(history);
         order.getStatusHistory().add(history);
 
-        return mapper.toResponse(order);
+        WorkOrder saved = workOrderRepository.saveAndFlush(order);
+        return mapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
