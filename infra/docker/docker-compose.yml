@@ -15,7 +15,7 @@ services:
     networks:
       - fieldops-net
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -142,6 +142,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_auth;encrypt=true;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER:-fieldops_auth_app}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
+      MIGRATOR_DB_USER: fieldops_auth_migrator
+      MIGRATOR_DB_PASSWORD: ${AUTH_MIGRATOR_PASSWORD:-${AUTH_DB_PASSWORD}}
       JWT_KEY_PATH: /app/keys
       FIELDOPS_DEMO_DATA_ENABLED: "true"
       FIELDOPS_SECURITY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:?INTERNAL_SERVICE_TOKEN es obligatorio}
@@ -173,6 +175,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_orders;encrypt=true;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: ${ORDERS_DB_USER:-fieldops_orders_app}
       SPRING_DATASOURCE_PASSWORD: ${ORDERS_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
+      MIGRATOR_DB_USER: fieldops_orders_migrator
+      MIGRATOR_DB_PASSWORD: ${ORDERS_MIGRATOR_PASSWORD:-${ORDERS_DB_PASSWORD}}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       AUTH_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
@@ -207,6 +211,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_notifications;encrypt=true;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATIONS_DB_USER:-fieldops_notifications_app}
       SPRING_DATASOURCE_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
+      MIGRATOR_DB_USER: fieldops_notifications_migrator
+      MIGRATOR_DB_PASSWORD: ${NOTIFICATIONS_MIGRATOR_PASSWORD:-${NOTIFICATIONS_DB_PASSWORD}}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       AUTH_SERVICE_URL: http://auth-service:8081
@@ -239,6 +245,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=fieldops_analytics;encrypt=true;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: ${ANALYTICS_DB_USER:-fieldops_analytics_app}
       SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
+      MIGRATOR_DB_USER: fieldops_analytics_migrator
+      MIGRATOR_DB_PASSWORD: ${ANALYTICS_MIGRATOR_PASSWORD:-${ANALYTICS_DB_PASSWORD}}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       AUTH_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
       SCHEMA_REGISTRY_URL: http://schema-registry:8081

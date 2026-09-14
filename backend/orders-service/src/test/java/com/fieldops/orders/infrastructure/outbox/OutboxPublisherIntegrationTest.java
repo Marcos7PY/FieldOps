@@ -32,7 +32,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestPropertySource(properties = "fieldops.outbox.publisher.enabled=true")
+@TestPropertySource(properties = {
+        "fieldops.outbox.publisher.enabled=true",
+        "fieldops.outbox.publisher.fixed-delay=3600000"
+})
 class OutboxPublisherIntegrationTest extends AbstractIntegrationTest {
 
     protected static final KafkaContainer KAFKA_CONTAINER;
@@ -57,9 +60,14 @@ class OutboxPublisherIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private WorkOrderEventSerializer serializer;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private net.javacrumbs.shedlock.core.LockProvider lockProvider;
+
     @BeforeEach
     void cleanDatabase() {
         outboxEventRepository.deleteAll();
+        org.mockito.Mockito.when(lockProvider.lock(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Optional.of(() -> {}));
     }
 
     private OutboxEvent createValidOutboxEvent(Long aggregateId, String title, LocalDateTime createdAt) {
@@ -97,6 +105,7 @@ class OutboxPublisherIntegrationTest extends AbstractIntegrationTest {
 
         try (KafkaConsumer<String, WorkOrderEvent> consumer = new KafkaConsumer<>(props)) {
             consumer.subscribe(List.of(OutboxEventDispatcher.TOPIC));
+            consumer.poll(Duration.ofMillis(200));
 
             outboxPublisher.publishPendingEvents();
 

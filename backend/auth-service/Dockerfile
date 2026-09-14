@@ -1,5 +1,6 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
+COPY backend/pom.xml ./backend/pom.xml
 COPY backend/auth-service ./backend/auth-service
 WORKDIR /build/backend/auth-service
 RUN mvn -B clean package -DskipTests

@@ -1,5 +1,6 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
+COPY backend/pom.xml ./backend/pom.xml
 COPY backend/api-gateway ./backend/api-gateway
 WORKDIR /build/backend/api-gateway
 RUN mvn -B clean package -DskipTests

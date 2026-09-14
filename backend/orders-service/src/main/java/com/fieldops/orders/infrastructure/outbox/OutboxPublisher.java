@@ -36,7 +36,7 @@ public class OutboxPublisher {
         this.dispatcher = dispatcher;
     }
 
-    @Scheduled(fixedDelay = 2000)
+    @Scheduled(fixedDelayString = "${fieldops.outbox.publisher.fixed-delay:2000}")
     @SchedulerLock(name = "outbox_publisher_lock", lockAtLeastFor = "1s", lockAtMostFor = "180s")
     public void publishPendingEvents() {
         List<OutboxEvent> pendingEvents = outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10));

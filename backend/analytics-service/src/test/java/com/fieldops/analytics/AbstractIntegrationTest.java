@@ -8,7 +8,7 @@ import org.testcontainers.containers.MSSQLServerContainer;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
-    protected static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER;
+    public static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER;
 
     static {
         SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(

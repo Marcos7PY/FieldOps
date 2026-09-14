@@ -1,11 +1,15 @@
 package com.fieldops.analytics.infrastructure.persistence;
 
 import com.fieldops.analytics.domain.model.WorkOrderDailyMetric;
+import com.fieldops.analytics.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,8 +19,17 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 class WorkOrderDailyMetricRepositoryTest {
+
+    @DynamicPropertySource
+    static void registerProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", AbstractIntegrationTest.SQL_SERVER_CONTAINER::getJdbcUrl);
+        registry.add("spring.datasource.username", AbstractIntegrationTest.SQL_SERVER_CONTAINER::getUsername);
+        registry.add("spring.datasource.password", AbstractIntegrationTest.SQL_SERVER_CONTAINER::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "com.microsoft.sqlserver.jdbc.SQLServerDriver");
+    }
 
     @Autowired
     private WorkOrderDailyMetricRepository metricRepository;

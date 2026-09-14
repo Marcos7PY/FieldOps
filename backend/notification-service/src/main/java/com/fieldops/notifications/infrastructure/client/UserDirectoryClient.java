@@ -29,7 +29,7 @@ public class UserDirectoryClient {
         this.internalToken = internalToken;
     }
 
-    @Cacheable(value = "users", key = "#userId", unless = "#result == null || !#result.isPresent()")
+    @Cacheable(value = "users", key = "#userId", unless = "#result == null")
     public Optional<UserDto> findUserById(Long userId) {
         if (userId == null) {
             return Optional.empty();

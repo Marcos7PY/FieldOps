@@ -3,7 +3,7 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export COMPOSE_FILE="$ROOT/infra/docker/docker-compose.yml"
+export COMPOSE_FILE="$(command -v cygpath >/dev/null && cygpath -w "$ROOT/infra/docker/docker-compose.yml" || echo "$ROOT/infra/docker/docker-compose.yml")"
 
 echo "=== Iniciando entorno FieldOps ==="
 
@@ -16,14 +16,17 @@ fi
 # Generar contraseñas de BD aisladas por microservicio si no están fijadas (F2-T08)
 for svc in orders auth notifications analytics; do
   VAR="$(echo "$svc" | tr '[:lower:]' '[:upper:]')_DB_PASSWORD"
-  if ! grep -q "^${VAR}=." .env; then
-    PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)Aa1!"
-    if grep -q "^${VAR}=" .env; then
-      sed -i "s|^${VAR}=.*|${VAR}=${PASS}|" .env
-    else
-      echo "${VAR}=${PASS}" >> .env
+  MIG_VAR="$(echo "$svc" | tr '[:lower:]' '[:upper:]')_MIGRATOR_PASSWORD"
+  for v in "$VAR" "$MIG_VAR"; do
+    if ! grep -q "^${v}=." .env; then
+      PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)Aa1!"
+      if grep -q "^${v}=" .env; then
+        sed -i "s|^${v}=.*|${v}=${PASS}|" .env
+      else
+        echo "${v}=${PASS}" >> .env
+      fi
     fi
-  fi
+  done
 done
 
 # Token de servicio interno (auth-service <-> notification-service)
@@ -65,7 +68,12 @@ for service in sqlserver kafka schema-registry; do
 done
 
 echo "Verificando y creando bases de datos relacionales y usuarios por servicio..."
-docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
+SQLCMD_BIN="/opt/mssql-tools/bin/sqlcmd"
+if ! docker compose exec -T sqlserver test -x "$SQLCMD_BIN" 2>/dev/null; then
+  SQLCMD_BIN="/opt/mssql-tools18/bin/sqlcmd"
+fi
+
+docker compose exec -T sqlserver "$SQLCMD_BIN" \
   -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
   -v AUTH_DB_PASSWORD="$AUTH_DB_PASSWORD" \
      AUTH_MIGRATOR_PASSWORD="${AUTH_MIGRATOR_PASSWORD:-$AUTH_DB_PASSWORD}" \
@@ -101,7 +109,7 @@ done
 echo "Microservicios verificados."
 
 echo "Aplicando datos de demostración en fieldops_orders..."
-docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
+docker compose exec -T sqlserver "$SQLCMD_BIN" \
   -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
   -i /dev/stdin < "$ROOT/infra/sql/01_seed_demo_data.sql"
 echo "Datos de demostración aplicados."

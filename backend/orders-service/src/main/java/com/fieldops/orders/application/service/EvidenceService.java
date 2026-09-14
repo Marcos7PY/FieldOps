@@ -169,6 +169,9 @@ public class EvidenceService {
         }
 
         Path filePath = uploadsLocation.resolve(evidence.getFilePath()).normalize();
+        if (!filePath.startsWith(uploadsLocation)) {
+            throw new AccessDeniedException("Ruta de evidencia fuera del directorio permitido");
+        }
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("File not found: " + evidence.getFilePath());
         }

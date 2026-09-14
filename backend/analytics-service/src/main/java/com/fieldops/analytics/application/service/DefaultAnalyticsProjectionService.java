@@ -106,7 +106,7 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
         processedEventRepository.save(new ProcessedEvent(eventId, consumerGroup, now));
 
         // Atomic update of checkpoint (F3-T06)
-        LocalDateTime occurredDateTime = LocalDateTime.ofInstant(event.getOccurredAt(), ZoneOffset.UTC);
+        LocalDateTime occurredDateTime = LocalDateTime.ofInstant(event.getOccurredAt(), businessZone);
         int updatedRows = checkpointRepository.incrementCheckpoint(consumerGroup, occurredDateTime);
         if (updatedRows == 0) {
             checkpointRepository.save(new ProjectionCheckpoint(consumerGroup, null, occurredDateTime, 1L));
@@ -131,12 +131,12 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
 
     private Long parseTechnicianId(String technicianId) {
         if (technicianId == null || technicianId.isBlank()) {
-            return 0L;
+            return UNASSIGNED_TECHNICIAN;
         }
         try {
             return Long.parseLong(technicianId);
         } catch (NumberFormatException e) {
-            return 0L;
+            return UNASSIGNED_TECHNICIAN;
         }
     }
 }

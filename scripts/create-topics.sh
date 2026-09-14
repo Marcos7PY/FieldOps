@@ -3,7 +3,10 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/infra/docker/docker-compose.yml}"
+export COMPOSE_FILE="${COMPOSE_FILE:-$(command -v cygpath >/dev/null && cygpath -w "$ROOT/infra/docker/docker-compose.yml" || echo "$ROOT/infra/docker/docker-compose.yml")}"
+
+TOPIC="${TOPIC:-fieldops.work-orders.events}"
+DLT="${DLT:-fieldops.work-orders.events-dlt}"
 
 create_topic() {
   local name="$1" partitions="$2" retention="$3"
