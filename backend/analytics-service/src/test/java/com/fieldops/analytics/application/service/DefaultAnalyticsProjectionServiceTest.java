@@ -84,7 +84,7 @@ class DefaultAnalyticsProjectionServiceTest {
         verify(metricRepository).upsertMetric(
                 eq(LocalDate.of(2026, 9, 13)),
                 eq(0L),
-                eq("DRAFT"),
+                eq("CREATED"),
                 eq(1),
                 eq(null),
                 any(LocalDateTime.class)

@@ -28,6 +28,7 @@ class JwksControllerTest {
         JwtProperties props = new JwtProperties();
         props.setKeyPath(tempDir.toString());
         props.setKeyId("test-jwks-kid");
+        props.setAllowKeyGeneration(true);
 
         RsaKeyProvider provider = new RsaKeyProvider(props);
         provider.afterPropertiesSet();

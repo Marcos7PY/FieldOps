@@ -50,7 +50,7 @@ public class TransactionalOutboxService implements OutboxService {
     public void recordOrderAssigned(WorkOrder order) {
         Instant scheduledInstant = order.getScheduledAt() != null
                 ? order.getScheduledAt().toInstant(ZoneOffset.UTC)
-                : Instant.now();
+                : null;
 
         String techIdStr = String.valueOf(order.getAssignedTechnicianId());
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()

@@ -43,6 +43,8 @@ management:
       exposure:
         include: health,info,metrics,prometheus
   endpoint:
+    health:
+      show-details: never
     metrics:
       enabled: true
     prometheus:
@@ -55,3 +57,9 @@ management:
 logging:
   pattern:
     level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+fieldops:
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  security:
+    internal-token: ${INTERNAL_SERVICE_TOKEN:}

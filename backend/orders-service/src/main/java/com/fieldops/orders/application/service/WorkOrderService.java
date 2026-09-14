@@ -7,6 +7,8 @@ import com.fieldops.orders.application.dto.WorkOrderResponse;
 import com.fieldops.orders.application.dto.WorkOrderSummaryResponse;
 import com.fieldops.orders.application.dto.PageResponse;
 import com.fieldops.orders.application.dto.WorkOrderMetricsResponse;
+import com.fieldops.orders.application.dto.WorkOrderMetricsRangeResponse;
+import com.fieldops.orders.infrastructure.persistence.MetricsRangeProjection;
 import com.fieldops.orders.domain.model.Priority;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -126,21 +128,30 @@ public class WorkOrderService {
             statusChanged = true;
         }
 
+        Long previousTechnicianId = order.getAssignedTechnicianId();
         order.setAssignedTechnicianId(request.technicianId());
         if (request.scheduledAt() != null) {
             order.setScheduledAt(request.scheduledAt());
         }
 
-        if (statusChanged) {
+        boolean technicianChanged = !Objects.equals(previousTechnicianId, request.technicianId());
+
+        if (statusChanged || technicianChanged) {
             WorkOrderStatusHistory history = new WorkOrderStatusHistory();
             history.setWorkOrder(order);
             history.setPreviousStatus(previousStatus);
-            history.setNewStatus(OrderStatus.ASSIGNED);
+            history.setNewStatus(order.getStatus());
             history.setChangedBy(supervisorId);
             history.setChangedAt(now);
-            history.setNotes("Technician assigned");
+            history.setNotes(statusChanged
+                    ? "Technician assigned: " + request.technicianId()
+                    : "Technician reassigned: " + previousTechnicianId + " -> " + request.technicianId());
             historyRepository.save(history);
             order.getStatusHistory().add(history);
+        }
+
+        if (technicianChanged && order.getStatus() == OrderStatus.IN_PROGRESS) {
+            order.setStartedAt(now);
         }
 
         WorkOrder saved = workOrderRepository.saveAndFlush(order);
@@ -294,6 +305,38 @@ public class WorkOrderService {
         }
 
         return new WorkOrderMetricsResponse(totalOrders, ordersByStatus, ordersByPriority, avgDuration);
+    }
+
+    @Transactional(readOnly = true)
+    public WorkOrderMetricsRangeResponse getMetricsInRange(LocalDateTime from, LocalDateTime toExclusive) {
+        if (from == null || toExclusive == null) {
+            throw new BusinessRuleViolationException("Los parametros 'from' y 'to' son obligatorios");
+        }
+        if (!toExclusive.isAfter(from)) {
+            throw new BusinessRuleViolationException("'to' debe ser posterior a 'from'");
+        }
+
+        MetricsRangeProjection p = workOrderRepository.findMetricsInRange(from, toExclusive);
+
+        Map<OrderStatus, Long> byStatus = new EnumMap<>(OrderStatus.class);
+        byStatus.put(OrderStatus.DRAFT, p.getDraftCount());
+        byStatus.put(OrderStatus.ASSIGNED, p.getAssignedCount());
+        byStatus.put(OrderStatus.IN_PROGRESS, p.getInProgressCount());
+        byStatus.put(OrderStatus.COMPLETED, p.getCompletedCount());
+        byStatus.put(OrderStatus.CANCELLED, p.getCancelledCount());
+
+        Map<Priority, Long> byPriority = new EnumMap<>(Priority.class);
+        byPriority.put(Priority.LOW, p.getLowCount());
+        byPriority.put(Priority.MEDIUM, p.getMediumCount());
+        byPriority.put(Priority.HIGH, p.getHighCount());
+        byPriority.put(Priority.CRITICAL, p.getCriticalCount());
+
+        BigDecimal avg = p.getAvgDurationMinutes();
+        if (avg != null) {
+            avg = avg.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return new WorkOrderMetricsRangeResponse(from, toExclusive, p.getTotalOrders(), byStatus, byPriority, avg);
     }
 
     public WorkOrder findOrderById(Long id) {

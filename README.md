@@ -75,6 +75,8 @@ Cuando un técnico inicia o finaliza un servicio en la aplicación móvil, el ev
    - `notification-group` (`notification-service`): comprueba idempotencia deduplicando por `(eventId, consumerGroup)`, resuelve al destinatario desde el directorio o payload sin inventar correos ficticios, genera el correo con el detalle del servicio y lo entrega al servidor SMTP.
    - `analytics-group` (`analytics-service`): deduplica eventos y actualiza la proyección pre-agregada diaria (`work_order_daily_metrics`) indexada secundariamente por técnico y fecha.
 
+   *Nota sobre orden y reintentos:* El orden estricto por orden de trabajo se garantiza en el camino feliz. Ante fallos, el reintento no bloqueante puede alterar el orden relativo; los consumidores son idempotentes y convergen al estado final.
+
 ![Consumer groups y particiones en AKHQ](docs/images/akhq-consumer-groups.png)
 
 Como se aprecia en la captura de AKHQ, ambos grupos operan con concurrencia alineada a las 3 particiones del topic, manteniendo un retardo (lag) de cero mensajes tras procesar eventos en pruebas de carga.
@@ -83,7 +85,9 @@ Como se aprecia en la captura de AKHQ, ambos grupos operan con concurrencia alin
 
 ## Rendimiento y optimización
 
-Durante las pruebas de carga sobre un volumen de 500.000 órdenes de trabajo y más de 1.000.000 de cambios de estado, se analizó el comportamiento de la consulta de métricas de productividad (`GET /api/v1/work-orders/metrics`). La versión preliminar ejecutaba escaneos completos de tabla debido a funciones no sargables sobre columnas de fecha y subconsultas correlacionadas.
+Durante las pruebas de carga sobre un volumen de 500.000 órdenes de trabajo y más de 1.000.000 de cambios de estado, se analizó el comportamiento de la consulta de métricas de productividad por rango de fechas
+(`GET /api/v1/work-orders/metrics/range?from=2026-01-01T00:00:00&to=2026-04-01T00:00:00`,
+donde `to` es exclusivo). La versión preliminar ejecutaba escaneos completos de tabla debido a funciones no sargables sobre columnas de fecha y subconsultas correlacionadas.
 
 La optimización sustituyó las expresiones funcionales por rangos semiabiertos, introdujo un índice compuesto cubriente con `INCLUDE` y un índice filtrado excluyendo órdenes canceladas. Paralelamente, se implementó la proyección pre-agregada CQRS en `analytics-service`.
 
@@ -124,4 +128,5 @@ Las siguientes capacidades se omiten deliberadamente para acotar la complejidad 
 2. **Videollamadas o mensajería instantánea:** La comunicación entre el despachador y el técnico utiliza canales externos. No se incorpora soporte para WebRTC ni WebSockets de mensajería interactiva.
 3. **Planificación automatizada de rutas de tráfico vehicular:** La asignación de órdenes depende del criterio del supervisor. No se ejecutan algoritmos de optimización de rutas con datos de tráfico en tiempo real.
 4. **Soporte multi-tenant con aislamiento físico de bases de datos:** Todos los clientes y organizaciones operan en esquemas lógicos unificados. No existe particionamiento por catálogo de base de datos para distintos clientes corporativos.
-5. **Captura de firma biométrica en pantalla:** La confirmación del servicio se valida mediante evidencia fotográfica y coordenadas satelitales, sin recolección de trazos de firma digital en el dispositivo táctil.
+5. **Validación sincrónica de técnico asignado contra auth-service:** `orders-service` persiste el `assignedTechnicianId` sin invocar en tiempo real el directorio de identidades de `auth-service` para preservar el desacoplamiento y la disponibilidad en creación/asignación de órdenes; la existencia del técnico y su rol se garantizan en la asignación por UI del supervisor y en la autenticación del técnico en la app móvil.
+6. **Captura de firma biométrica en pantalla:** La confirmación del servicio se valida mediante evidencia fotográfica y coordenadas satelitales, sin recolección de trazos de firma digital en el dispositivo táctil.

@@ -35,6 +35,15 @@ public class OutboxEvent {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount = 0;
+
+    @Column(name = "last_error", length = 500)
+    private String lastError;
+
+    @Column(name = "dead_lettered_at")
+    private LocalDateTime deadLetteredAt;
+
     public OutboxEvent() {
     }
 
@@ -100,5 +109,29 @@ public class OutboxEvent {
 
     public void setPublishedAt(LocalDateTime publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public int getAttemptCount() {
+        return attemptCount;
+    }
+
+    public void setAttemptCount(int attemptCount) {
+        this.attemptCount = attemptCount;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
+    }
+
+    public LocalDateTime getDeadLetteredAt() {
+        return deadLetteredAt;
+    }
+
+    public void setDeadLetteredAt(LocalDateTime deadLetteredAt) {
+        this.deadLetteredAt = deadLetteredAt;
     }
 }

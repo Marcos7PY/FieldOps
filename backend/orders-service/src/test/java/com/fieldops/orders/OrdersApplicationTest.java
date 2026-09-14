@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class OrdersApplicationTest {
+class OrdersApplicationTest extends AbstractIntegrationTest {
 
     @Test
     void contextLoadsAndSchemaValidates() {

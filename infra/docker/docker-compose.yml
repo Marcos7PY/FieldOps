@@ -2,7 +2,7 @@ name: fieldops
 
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU13-ubuntu-22.04
     container_name: fieldops-sqlserver
     environment:
       ACCEPT_EULA: "Y"
@@ -144,7 +144,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
       JWT_KEY_PATH: /app/keys
       FIELDOPS_DEMO_DATA_ENABLED: "true"
-      FIELDOPS_SECURITY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-}
+      FIELDOPS_SECURITY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:?INTERNAL_SERVICE_TOKEN es obligatorio}
     volumes:
       - ${JWT_KEYS_PATH:-${JWT_KEY_PATH:-../../keys}}:/app/keys
     networks:
@@ -210,7 +210,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       AUTH_SERVICE_URL: http://auth-service:8081
-      AUTH_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?INTERNAL_SERVICE_TOKEN es obligatorio}
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
     networks:

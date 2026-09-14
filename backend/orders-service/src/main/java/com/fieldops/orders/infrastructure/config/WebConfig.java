@@ -12,12 +12,9 @@ import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -25,16 +22,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${fieldops.uploads-path:uploads}")
     private String uploadsPath;
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path path = Paths.get(uploadsPath).toAbsolutePath().normalize();
-        String location = path.toUri().toString();
-        if (!location.endsWith("/")) {
-            location += "/";
-        }
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(location);
-    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

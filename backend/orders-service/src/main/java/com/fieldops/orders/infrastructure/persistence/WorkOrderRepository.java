@@ -41,4 +41,30 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, Long>, Jpa
               AND completed_at >= started_at
             """, nativeQuery = true)
     java.math.BigDecimal findAverageCompletionMinutes();
+
+    @Query(value = """
+            SELECT
+                COUNT(*) AS totalOrders,
+                COUNT(CASE WHEN status = 'DRAFT'       THEN 1 END) AS draftCount,
+                COUNT(CASE WHEN status = 'ASSIGNED'    THEN 1 END) AS assignedCount,
+                COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) AS inProgressCount,
+                COUNT(CASE WHEN status = 'COMPLETED'   THEN 1 END) AS completedCount,
+                COUNT(CASE WHEN status = 'CANCELLED'   THEN 1 END) AS cancelledCount,
+                COUNT(CASE WHEN priority = 'LOW'      THEN 1 END) AS lowCount,
+                COUNT(CASE WHEN priority = 'MEDIUM'   THEN 1 END) AS mediumCount,
+                COUNT(CASE WHEN priority = 'HIGH'     THEN 1 END) AS highCount,
+                COUNT(CASE WHEN priority = 'CRITICAL' THEN 1 END) AS criticalCount,
+                CAST(AVG(CASE
+                    WHEN status = 'COMPLETED'
+                         AND started_at IS NOT NULL
+                         AND completed_at IS NOT NULL
+                         AND completed_at >= started_at
+                    THEN CAST(DATEDIFF(MINUTE, started_at, completed_at) AS DECIMAL(18,4))
+                END) AS DECIMAL(18,4)) AS avgDurationMinutes
+            FROM work_order
+            WHERE created_at >= :from
+              AND created_at <  :toExclusive
+            """, nativeQuery = true)
+    MetricsRangeProjection findMetricsInRange(@Param("from") java.time.LocalDateTime from,
+                                              @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }

@@ -18,6 +18,7 @@ jwt:
   key-path: target/test-keys
   access-token-expiration-seconds: 900
   refresh-token-expiration-days: 7
+  allow-key-generation: true
 
 fieldops:
   demo-data:

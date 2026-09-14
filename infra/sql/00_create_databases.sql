@@ -14,7 +14,15 @@ IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_auth
     CREATE USER fieldops_auth_app FOR LOGIN fieldops_auth_app;
 ALTER ROLE db_datareader ADD MEMBER fieldops_auth_app;
 ALTER ROLE db_datawriter ADD MEMBER fieldops_auth_app;
-ALTER ROLE db_ddladmin  ADD MEMBER fieldops_auth_app;
+-- Cuenta de migracion (Flyway) separada de la cuenta de runtime
+IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'fieldops_auth_migrator')
+    CREATE LOGIN fieldops_auth_migrator WITH PASSWORD = '$(AUTH_MIGRATOR_PASSWORD)';
+GO
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_auth_migrator')
+    CREATE USER fieldops_auth_migrator FOR LOGIN fieldops_auth_migrator;
+ALTER ROLE db_ddladmin   ADD MEMBER fieldops_auth_migrator;
+ALTER ROLE db_datareader ADD MEMBER fieldops_auth_migrator;
+ALTER ROLE db_datawriter ADD MEMBER fieldops_auth_migrator;
 GO
 
 -- Usuario con privilegios mínimos para fieldops_orders
@@ -27,7 +35,15 @@ IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_orde
     CREATE USER fieldops_orders_app FOR LOGIN fieldops_orders_app;
 ALTER ROLE db_datareader ADD MEMBER fieldops_orders_app;
 ALTER ROLE db_datawriter ADD MEMBER fieldops_orders_app;
-ALTER ROLE db_ddladmin  ADD MEMBER fieldops_orders_app;
+-- Cuenta de migracion (Flyway) separada de la cuenta de runtime
+IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'fieldops_orders_migrator')
+    CREATE LOGIN fieldops_orders_migrator WITH PASSWORD = '$(ORDERS_MIGRATOR_PASSWORD)';
+GO
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_orders_migrator')
+    CREATE USER fieldops_orders_migrator FOR LOGIN fieldops_orders_migrator;
+ALTER ROLE db_ddladmin   ADD MEMBER fieldops_orders_migrator;
+ALTER ROLE db_datareader ADD MEMBER fieldops_orders_migrator;
+ALTER ROLE db_datawriter ADD MEMBER fieldops_orders_migrator;
 GO
 
 -- Usuario con privilegios mínimos para fieldops_notifications
@@ -40,7 +56,15 @@ IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_noti
     CREATE USER fieldops_notifications_app FOR LOGIN fieldops_notifications_app;
 ALTER ROLE db_datareader ADD MEMBER fieldops_notifications_app;
 ALTER ROLE db_datawriter ADD MEMBER fieldops_notifications_app;
-ALTER ROLE db_ddladmin  ADD MEMBER fieldops_notifications_app;
+-- Cuenta de migracion (Flyway) separada de la cuenta de runtime
+IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'fieldops_notifications_migrator')
+    CREATE LOGIN fieldops_notifications_migrator WITH PASSWORD = '$(NOTIFICATIONS_MIGRATOR_PASSWORD)';
+GO
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_notifications_migrator')
+    CREATE USER fieldops_notifications_migrator FOR LOGIN fieldops_notifications_migrator;
+ALTER ROLE db_ddladmin   ADD MEMBER fieldops_notifications_migrator;
+ALTER ROLE db_datareader ADD MEMBER fieldops_notifications_migrator;
+ALTER ROLE db_datawriter ADD MEMBER fieldops_notifications_migrator;
 GO
 
 -- Usuario con privilegios mínimos para fieldops_analytics
@@ -53,5 +77,13 @@ IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_anal
     CREATE USER fieldops_analytics_app FOR LOGIN fieldops_analytics_app;
 ALTER ROLE db_datareader ADD MEMBER fieldops_analytics_app;
 ALTER ROLE db_datawriter ADD MEMBER fieldops_analytics_app;
-ALTER ROLE db_ddladmin  ADD MEMBER fieldops_analytics_app;
+-- Cuenta de migracion (Flyway) separada de la cuenta de runtime
+IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'fieldops_analytics_migrator')
+    CREATE LOGIN fieldops_analytics_migrator WITH PASSWORD = '$(ANALYTICS_MIGRATOR_PASSWORD)';
+GO
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'fieldops_analytics_migrator')
+    CREATE USER fieldops_analytics_migrator FOR LOGIN fieldops_analytics_migrator;
+ALTER ROLE db_ddladmin   ADD MEMBER fieldops_analytics_migrator;
+ALTER ROLE db_datareader ADD MEMBER fieldops_analytics_migrator;
+ALTER ROLE db_datawriter ADD MEMBER fieldops_analytics_migrator;
 GO

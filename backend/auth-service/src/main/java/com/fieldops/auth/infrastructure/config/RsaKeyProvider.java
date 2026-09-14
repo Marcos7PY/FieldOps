@@ -46,8 +46,12 @@ public class RsaKeyProvider implements InitializingBean {
         try {
             if (Files.exists(privFile) && Files.exists(pubFile)) {
                 loadKeys(privFile, pubFile);
-            } else {
+            } else if (properties.isAllowKeyGeneration()) {
                 generateAndSaveKeys(keyDir, privFile, pubFile);
+            } else {
+                throw new IllegalStateException(
+                        "No se encontro el par de claves RSA en " + keyDir
+                        + " y la generacion automatica esta deshabilitada (jwt.allow-key-generation=false)");
             }
 
             this.rsaJwk = new RSAKey.Builder(this.publicKey)

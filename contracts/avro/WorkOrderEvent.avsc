@@ -66,10 +66,11 @@
             { "name": "technicianName", "type": ["null", "string"], "default": null },
             {
               "name": "scheduledAt",
-              "type": {
+              "type": ["null", {
                 "type": "long",
                 "logicalType": "timestamp-millis"
-              }
+              }],
+              "default": null
             }
           ]
         },

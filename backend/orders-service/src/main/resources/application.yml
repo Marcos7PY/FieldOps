@@ -25,23 +25,8 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    placeholders:
-      outbox_filter: "WHERE published_at IS NULL"
-      performance_filter: "WHERE status <> 'CANCELLED'"
-      include_clause: "INCLUDE (assigned_technician_id, completed_at)"
-      duration_metrics_filter: "WHERE status = 'COMPLETED'"
-      duration_include_clause: "INCLUDE (started_at, completed_at)"
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
-      acks: all
-      retries: 2147483647
-      compression-type: snappy
-      properties:
-        enable.idempotence: true
-        max.in.flight.requests.per.connection: 5
     properties:
       schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8090}
 
@@ -53,6 +38,9 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
 
 logging:
   pattern:

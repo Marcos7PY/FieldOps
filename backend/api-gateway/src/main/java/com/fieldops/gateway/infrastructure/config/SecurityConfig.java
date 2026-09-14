@@ -14,7 +14,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -47,7 +51,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .pathMatchers("/.well-known/**").permitAll()
-                        .pathMatchers("/actuator/**").permitAll()
+                        .pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -84,7 +88,13 @@ public class SecurityConfig {
     @Bean
     @ConditionalOnMissingBean
     public ReactiveJwtDecoder reactiveJwtDecoder() {
-        return NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(),
+                new JwtIssuerValidator("fieldops-auth"),
+                new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains("fieldops-api"))
+        ));
+        return decoder;
     }
 
     @Bean

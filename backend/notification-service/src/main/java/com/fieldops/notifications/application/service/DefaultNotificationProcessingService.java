@@ -41,8 +41,13 @@ public class DefaultNotificationProcessingService implements NotificationProcess
         return processedEventRepository.existsById(new ProcessedEventId(eventId, consumerGroup));
     }
 
+    /**
+     * Procesa el evento de notificación y registra el resultado.
+     * Garantía de entrega: at-least-once. El envío SMTP no es transaccional y las escrituras
+     * de auditoría (NotificationLogWriter) operan en transacciones independientes (REQUIRES_NEW)
+     * para no retener conexiones de base de datos durante llamadas I/O de red externas.
+     */
     @Override
-    @Transactional
     public void processAndRecord(WorkOrderEvent event, String consumerGroup) {
         String eventType = event.getEventType();
         String eventId = event.getEventId();

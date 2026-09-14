@@ -8,14 +8,22 @@ import com.fieldops.auth.domain.model.Role;
 import com.fieldops.auth.domain.model.User;
 import com.fieldops.auth.infrastructure.config.JwtProperties;
 import com.fieldops.auth.infrastructure.persistence.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,23 +46,50 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        String clientIp = getClientIp();
         User user = userRepository.findByUsername(request.username())
                 .orElse(null);
 
         if (user == null) {
+            log.warn("Login failed: user '{}' not found from IP '{}'", request.username(), clientIp);
             // Mitigate timing-based user enumeration attacks:
             // Run BCrypt against a dummy hash so response time is consistent
             passwordEncoder.matches(request.password(), DUMMY_HASH);
             throw new InvalidCredentialsException();
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now)) {
+            log.warn("Login failed: account is locked until {} for user '{}' from IP '{}'",
+                    user.getLockedUntil(), request.username(), clientIp);
+            throw new InvalidCredentialsException();
+        }
+
         if (!user.isActive()) {
+            log.warn("Login failed: inactive user '{}' from IP '{}'", request.username(), clientIp);
             passwordEncoder.matches(request.password(), user.getPasswordHash());
             throw new InvalidCredentialsException();
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            if (attempts >= 5) {
+                user.setLockedUntil(now.plusMinutes(15));
+                log.warn("Account locked for 15 minutes due to {} failed attempts: user '{}' from IP '{}'",
+                        attempts, request.username(), clientIp);
+            } else {
+                log.warn("Login failed (attempt {}/5) for user '{}' from IP '{}'",
+                        attempts, request.username(), clientIp);
+            }
+            userRepository.save(user);
             throw new InvalidCredentialsException();
+        }
+
+        if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
         }
 
         String accessToken = tokenService.generateAccessToken(user);
@@ -66,6 +101,22 @@ public class AuthService {
                 jwtProperties.getAccessTokenExpirationSeconds(),
                 toUserResponse(user)
         );
+    }
+
+    private String getClientIp() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                HttpServletRequest req = attrs.getRequest();
+                String xForwardedFor = req.getHeader("X-Forwarded-For");
+                if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+                    return xForwardedFor.split(",")[0].trim();
+                }
+                return req.getRemoteAddr();
+            }
+        } catch (Exception ignored) {
+        }
+        return "unknown";
     }
 
     @Transactional

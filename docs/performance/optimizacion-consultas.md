@@ -53,10 +53,11 @@ El análisis del plan de ejecución antes de la intervención reveló los siguie
 
 La intervención se estructuró en tres acciones concretas:
 
-### 3.1 Índices especializados (`V5__performance_indexes.sql`)
-Se añadieron dos índices en la base de datos `fieldops_orders`:
+### 3.1 Índices especializados (`V4__performance_indexes.sql` y `V5__metrics_covering_index.sql`)
+Se añadieron índices optimizados en la base de datos `fieldops_orders`:
 - Un índice compuesto no agrupado sobre `(status, scheduled_at)` con cláusula `INCLUDE (assigned_technician_id, completed_at)`. Al contener todas las columnas requeridas en el nivel hoja, funciona como índice cubriente (*covering index*) y elimina las búsquedas de marcador (*Key Lookups*).
 - Un índice filtrado excluyendo `CANCELLED` (`WHERE status <> 'CANCELLED'`). Las órdenes canceladas representan el 15% de la tabla y nunca participan en los informes de productividad ni cálculo de tiempos de servicio. Este filtro redujo el tamaño del árbol B y su ocupación en memoria.
+- Un índice cubriente para duración de completadas sobre `(completed_at)` con `INCLUDE (started_at)` filtrado por `WHERE status = 'COMPLETED'`.
 
 ### 3.2 Reescritura sargable y agregación en base de datos
 Se eliminó la función `CAST` sobre la columna de fecha, adoptando un intervalo semiabierto sobre el valor limpio:

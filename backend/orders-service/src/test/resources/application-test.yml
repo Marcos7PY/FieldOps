@@ -1,20 +1,9 @@
 spring:
-  datasource:
-    url: jdbc:h2:mem:fieldops_orders;MODE=MSSQLServer;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
   jpa:
     hibernate:
       ddl-auto: validate
   flyway:
     enabled: true
-    placeholders:
-      outbox_filter: ""
-      performance_filter: ""
-      include_clause: ""
-      duration_metrics_filter: ""
-      duration_include_clause: ""
   kafka:
     bootstrap-servers: localhost:9092
     properties:

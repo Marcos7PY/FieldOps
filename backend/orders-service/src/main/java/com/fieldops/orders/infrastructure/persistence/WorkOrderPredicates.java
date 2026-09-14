@@ -42,19 +42,26 @@ public final class WorkOrderPredicates {
             }
 
             if (to != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), to));
+                predicates.add(criteriaBuilder.lessThan(root.get("createdAt"), to));
             }
 
             if (search != null && !search.isBlank()) {
-                String trimmed = search.trim();
+                String trimmed = escapeLike(search.trim());
                 String lowerPattern = "%" + trimmed.toLowerCase() + "%";
-                Predicate titleMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), lowerPattern);
-                Predicate codeMatch = criteriaBuilder.like(root.get("code"), trimmed.toUpperCase() + "%");
-                Predicate descMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), lowerPattern);
+                Predicate titleMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), lowerPattern, '\\');
+                Predicate codeMatch = criteriaBuilder.like(root.get("code"), trimmed.toUpperCase() + "%", '\\');
+                Predicate descMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), lowerPattern, '\\');
                 predicates.add(criteriaBuilder.or(titleMatch, codeMatch, descMatch));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static String escapeLike(String input) {
+        return input.replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_")
+                    .replace("[", "\\[");
     }
 }

@@ -37,10 +37,14 @@ public class WorkOrderMapper {
         if (evidence == null) {
             return null;
         }
+        Long orderId = evidence.getWorkOrder() != null ? evidence.getWorkOrder().getId() : null;
+        String contentUrl = (orderId != null && evidence.getId() != null)
+                ? "/api/v1/work-orders/" + orderId + "/evidence/" + evidence.getId() + "/content"
+                : evidence.getFilePath();
         return new EvidenceResponse(
                 evidence.getId(),
-                evidence.getWorkOrder().getId(),
-                evidence.getFilePath(),
+                orderId,
+                contentUrl,
                 evidence.getContentType(),
                 evidence.getSizeBytes(),
                 evidence.getLatitude(),

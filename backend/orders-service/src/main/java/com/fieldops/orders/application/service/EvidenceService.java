@@ -11,8 +11,14 @@ import com.fieldops.orders.domain.model.WorkOrderEvidence;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderEvidenceRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -97,10 +103,24 @@ public class EvidenceService {
             throw new IllegalStateException("Failed to store file", e);
         }
 
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                        try {
+                            Files.deleteIfExists(destination);
+                        } catch (IOException ignored) {
+                        }
+                    }
+                }
+            });
+        }
+
         LocalDateTime now = LocalDateTime.now();
         WorkOrderEvidence evidence = new WorkOrderEvidence();
         evidence.setWorkOrder(order);
-        evidence.setFilePath("/uploads/" + storedFileName);
+        evidence.setFilePath(storedFileName);
         evidence.setContentType(detectedContentType);
         evidence.setSizeBytes(file.getSize());
         evidence.setLatitude(metadata != null ? metadata.latitude() : null);
@@ -128,6 +148,39 @@ public class EvidenceService {
         return evidenceRepository.findByWorkOrderId(workOrderId).stream()
                 .map(mapper::toEvidenceResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> loadEvidenceContent(Long workOrderId, Long evidenceId, Long userId, boolean isSupervisor) {
+        WorkOrder order = workOrderRepository.findById(workOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Work order not found with id: " + workOrderId));
+
+        if (!isSupervisor) {
+            if (order.getAssignedTechnicianId() == null || !order.getAssignedTechnicianId().equals(userId)) {
+                throw new AccessDeniedException("Technician can only view evidence of assigned orders");
+            }
+        }
+
+        WorkOrderEvidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+
+        if (!evidence.getWorkOrder().getId().equals(workOrderId)) {
+            throw new ResourceNotFoundException("Evidence not associated with work order: " + workOrderId);
+        }
+
+        Path filePath = uploadsLocation.resolve(evidence.getFilePath()).normalize();
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("File not found: " + evidence.getFilePath());
+        }
+
+        Resource resource = new FileSystemResource(filePath);
+        String contentType = evidence.getContentType() != null ? evidence.getContentType() : "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filePath.getFileName().toString() + "\"")
+                .body(resource);
     }
 
     private void validateFile(MultipartFile file) {

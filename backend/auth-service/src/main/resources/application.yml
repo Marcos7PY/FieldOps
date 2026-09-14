@@ -25,11 +25,15 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
 
 jwt:
   key-path: ${JWT_KEY_PATH:../../keys}
   access-token-expiration-seconds: 900
   refresh-token-expiration-days: 7
+  allow-key-generation: ${JWT_ALLOW_KEY_GENERATION:false}
 
 fieldops:
   demo-data:

@@ -12,12 +12,16 @@ import com.fieldops.analytics.infrastructure.persistence.ProjectionCheckpointRep
 import com.fieldops.analytics.infrastructure.persistence.WorkOrderDailyMetricRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 @Service
@@ -25,18 +29,33 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
 
     private static final Logger log = LoggerFactory.getLogger(DefaultAnalyticsProjectionService.class);
 
+    /** Centinela para eventos sin tecnico asignado. Documentado en el ADR de analitica. */
+    public static final Long UNASSIGNED_TECHNICIAN = 0L;
+
     private final WorkOrderDailyMetricRepository metricRepository;
     private final ProcessedEventRepository processedEventRepository;
     private final ProjectionCheckpointRepository checkpointRepository;
+    private final ZoneId businessZone;
 
     public DefaultAnalyticsProjectionService(
             WorkOrderDailyMetricRepository metricRepository,
             ProcessedEventRepository processedEventRepository,
             ProjectionCheckpointRepository checkpointRepository
     ) {
+        this(metricRepository, processedEventRepository, checkpointRepository, "America/Lima");
+    }
+
+    @Autowired
+    public DefaultAnalyticsProjectionService(
+            WorkOrderDailyMetricRepository metricRepository,
+            ProcessedEventRepository processedEventRepository,
+            ProjectionCheckpointRepository checkpointRepository,
+            @Value("${fieldops.analytics.business-zone:America/Lima}") String zone
+    ) {
         this.metricRepository = metricRepository;
         this.processedEventRepository = processedEventRepository;
         this.checkpointRepository = checkpointRepository;
+        this.businessZone = ZoneId.of(zone);
     }
 
     @Override
@@ -50,14 +69,14 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
     public void projectEvent(WorkOrderEvent event, String consumerGroup) {
         String eventType = event.getEventType();
         String eventId = event.getEventId();
-        LocalDate occurredDate = LocalDate.ofInstant(event.getOccurredAt(), ZoneOffset.UTC);
+        LocalDate occurredDate = LocalDate.ofInstant(businessInstant(event), businessZone);
         LocalDateTime now = LocalDateTime.now();
 
         log.info("Projecting event {} (type={}) into analytics read model", eventId, eventType);
 
         switch (eventType) {
             case "ORDER_CREATED" ->
-                    metricRepository.upsertMetric(occurredDate, 0L, "DRAFT", 1, null, now);
+                    metricRepository.upsertMetric(occurredDate, UNASSIGNED_TECHNICIAN, "CREATED", 1, null, now);
             case "ORDER_ASSIGNED" -> {
                 if (event.getPayload() instanceof OrderAssignedPayload payload) {
                     Long techId = parseTechnicianId(payload.getTechnicianId());
@@ -78,7 +97,7 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
                 }
             }
             case "ORDER_CANCELLED" ->
-                    metricRepository.upsertMetric(occurredDate, 0L, "CANCELLED", 1, null, now);
+                    metricRepository.upsertMetric(occurredDate, UNASSIGNED_TECHNICIAN, "CANCELLED", 1, null, now);
             default ->
                     log.warn("Unknown event type {} for event {}", eventType, eventId);
         }
@@ -92,6 +111,22 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
         if (updatedRows == 0) {
             checkpointRepository.save(new ProjectionCheckpoint(consumerGroup, null, occurredDateTime, 1L));
         }
+    }
+
+    /**
+     * Devuelve el instante del hecho de negocio, no el de escritura en el outbox.
+     * Critico con sincronizacion offline: un trabajo cerrado el lunes sin cobertura
+     * y sincronizado el miercoles debe contabilizarse el lunes.
+     */
+    private Instant businessInstant(WorkOrderEvent event) {
+        Object payload = event.getPayload();
+        if (payload instanceof OrderCompletedPayload p && p.getCompletedAt() != null) {
+            return p.getCompletedAt();
+        }
+        if (payload instanceof OrderStartedPayload p && p.getStartedAt() != null) {
+            return p.getStartedAt();
+        }
+        return event.getOccurredAt();
     }
 
     private Long parseTechnicianId(String technicianId) {

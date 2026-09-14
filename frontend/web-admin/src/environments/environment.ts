@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'http://localhost:8080/api/v1',
+  // Debe ajustarse con el dominio real de la API al desplegar a producción
+  apiBaseUrl: 'https://api.fieldops.example/api/v1',
 };

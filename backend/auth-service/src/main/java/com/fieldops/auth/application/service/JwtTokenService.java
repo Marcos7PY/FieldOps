@@ -54,10 +54,13 @@ public class JwtTokenService implements TokenService {
 
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .issuer("fieldops-auth")
+                    .audience("fieldops-api")
+                    .jwtID(UUID.randomUUID().toString())
                     .subject(user.getUsername())
                     .claim("userId", user.getId())
                     .claim("roles", roleNames)
                     .issueTime(Date.from(now))
+                    .notBeforeTime(Date.from(now))
                     .expirationTime(Date.from(exp))
                     .build();
 

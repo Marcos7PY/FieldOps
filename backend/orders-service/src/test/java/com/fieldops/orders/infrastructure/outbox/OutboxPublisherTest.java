@@ -70,7 +70,7 @@ class OutboxPublisherTest {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
         OutboxEvent e2 = createSampleOutboxEvent(2L, 102L, "ORDER_ASSIGNED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10)))
                 .thenReturn(List.of(e1, e2));
         when(kafkaOperations.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
@@ -106,7 +106,7 @@ class OutboxPublisherTest {
         OutboxEvent e2 = createSampleOutboxEvent(2L, 201L, "ORDER_ASSIGNED");
         OutboxEvent e3 = createSampleOutboxEvent(3L, 301L, "ORDER_CREATED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10)))
                 .thenReturn(List.of(e1, e2, e3));
         when(kafkaOperations.send(any(ProducerRecord.class)))
                 .thenAnswer(invocation -> {
@@ -129,7 +129,7 @@ class OutboxPublisherTest {
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10)))
                 .thenReturn(List.of());
 
         publisher.publishPendingEvents();
@@ -141,7 +141,7 @@ class OutboxPublisherTest {
     void shouldGenerateTraceIdWhenNotPresentInMDC() {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10)))
                 .thenReturn(List.of(e1));
         when(kafkaOperations.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));

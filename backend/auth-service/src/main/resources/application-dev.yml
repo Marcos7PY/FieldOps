@@ -1,0 +1,2 @@
+jwt:
+  allow-key-generation: true

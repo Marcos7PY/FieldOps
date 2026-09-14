@@ -10,4 +10,4 @@ CREATE TABLE outbox_event (
     CONSTRAINT uk_outbox_event_event_id UNIQUE (event_id)
 );
 
-CREATE INDEX ix_outbox_pending ON outbox_event (created_at) ${outbox_filter};
+CREATE INDEX ix_outbox_pending ON outbox_event (created_at) WHERE published_at IS NULL;

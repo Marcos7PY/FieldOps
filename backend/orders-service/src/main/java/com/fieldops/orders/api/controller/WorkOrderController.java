@@ -7,6 +7,7 @@ import com.fieldops.orders.application.dto.EvidenceMetadata;
 import com.fieldops.orders.application.dto.EvidenceResponse;
 import com.fieldops.orders.application.dto.PageResponse;
 import com.fieldops.orders.application.dto.WorkOrderMetricsResponse;
+import com.fieldops.orders.application.dto.WorkOrderMetricsRangeResponse;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
 import com.fieldops.orders.application.dto.WorkOrderSummaryResponse;
 import com.fieldops.orders.application.service.EvidenceService;
@@ -16,6 +17,7 @@ import com.fieldops.orders.domain.exception.VersionConflictException;
 import com.fieldops.orders.domain.model.OrderStatus;
 import com.fieldops.orders.infrastructure.security.CurrentUserProvider;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -119,6 +121,15 @@ public class WorkOrderController {
         return ResponseEntity.ok(workOrderService.getMetrics());
     }
 
+    @GetMapping("/metrics/range")
+    @PreAuthorize("hasRole('ROLE_SUPERVISOR')")
+    public ResponseEntity<WorkOrderMetricsRangeResponse> getMetricsInRange(
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+    ) {
+        return ResponseEntity.ok(workOrderService.getMetricsInRange(from, to));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_SUPERVISOR', 'ROLE_TECHNICIAN')")
     public ResponseEntity<WorkOrderResponse> getWorkOrderById(
@@ -187,6 +198,17 @@ public class WorkOrderController {
         Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
         return ResponseEntity.ok(evidenceService.getEvidences(id, resolvedUserId, isSupervisor));
+    }
+
+    @GetMapping("/{id}/evidence/{evidenceId}/content")
+    @PreAuthorize("hasAnyRole('ROLE_SUPERVISOR', 'ROLE_TECHNICIAN')")
+    public ResponseEntity<Resource> getEvidenceContent(
+            @PathVariable("id") Long id,
+            @PathVariable("evidenceId") Long evidenceId
+    ) {
+        Long userId = requireCurrentUserId();
+        boolean isSupervisor = currentUserProvider.isSupervisor();
+        return evidenceService.loadEvidenceContent(id, evidenceId, userId, isSupervisor);
     }
 
     private Long parseVersion(String ifMatch) {

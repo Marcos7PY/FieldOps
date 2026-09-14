@@ -11,6 +11,15 @@ public class JwtProperties {
     private long accessTokenExpirationSeconds = 900;
     private long refreshTokenExpirationDays = 7;
     private String keyId = "fieldops-key-1";
+    private boolean allowKeyGeneration = false;
+
+    public boolean isAllowKeyGeneration() {
+        return allowKeyGeneration;
+    }
+
+    public void setAllowKeyGeneration(boolean allowKeyGeneration) {
+        this.allowKeyGeneration = allowKeyGeneration;
+    }
 
     public String getKeyPath() {
         return keyPath;

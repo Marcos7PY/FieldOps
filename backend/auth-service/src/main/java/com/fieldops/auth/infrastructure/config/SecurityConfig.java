@@ -50,7 +50,7 @@ public class SecurityConfig {
                                 "/.well-known/jwks.json",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/actuator/**"
+                                "/actuator/health", "/actuator/health/**", "/actuator/info"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

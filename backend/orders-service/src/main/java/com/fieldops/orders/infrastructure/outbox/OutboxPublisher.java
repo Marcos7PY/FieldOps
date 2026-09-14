@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -17,6 +18,12 @@ import java.util.List;
 public class OutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
+    private static final int MAX_ATTEMPTS = 10;
+
+    private static String truncate(String msg) {
+        if (msg == null) return "unknown";
+        return msg.length() <= 500 ? msg : msg.substring(0, 500);
+    }
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventDispatcher dispatcher;
@@ -30,9 +37,9 @@ public class OutboxPublisher {
     }
 
     @Scheduled(fixedDelay = 2000)
-    @SchedulerLock(name = "outbox_publisher_lock", lockAtLeastFor = "1s", lockAtMostFor = "120s")
+    @SchedulerLock(name = "outbox_publisher_lock", lockAtLeastFor = "1s", lockAtMostFor = "180s")
     public void publishPendingEvents() {
-        List<OutboxEvent> pendingEvents = outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100));
+        List<OutboxEvent> pendingEvents = outboxEventRepository.findByPublishedAtIsNullAndDeadLetteredAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 10));
         if (pendingEvents.isEmpty()) {
             return;
         }
@@ -47,8 +54,9 @@ public class OutboxPublisher {
             try {
                 dispatcher.dispatch(event);
             } catch (Exception e) {
-                log.error("Failed to publish outbox event id: {}, aggregateId: {} will halt for ordering: {}",
-                        event.getEventId(), event.getAggregateId(), e.getMessage(), e);
+                log.error("Failed to publish outbox event id: {}, aggregateId: {}, attempt {}: {}",
+                        event.getEventId(), event.getAggregateId(), event.getAttemptCount() + 1, e.getMessage(), e);
+                outboxEventRepository.markFailure(event.getId(), truncate(e.getMessage()), MAX_ATTEMPTS, LocalDateTime.now());
                 if (event.getAggregateId() != null) {
                     blockedAggregates.add(event.getAggregateId());
                 }

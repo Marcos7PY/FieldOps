@@ -47,6 +47,7 @@ class TokenServiceTest {
         properties.setKeyId("test-kid");
         properties.setAccessTokenExpirationSeconds(900);
         properties.setRefreshTokenExpirationDays(7);
+        properties.setAllowKeyGeneration(true);
 
         rsaKeyProvider = new RsaKeyProvider(properties);
         rsaKeyProvider.afterPropertiesSet();

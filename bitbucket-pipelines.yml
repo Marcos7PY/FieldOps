@@ -18,7 +18,7 @@ definitions:
         script:
           - cd backend
           - mvn -B clean verify
-          - mvn -B sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN
+          - mvn -B sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN -Dsonar.qualitygate.wait=true
         artifacts:
           - "**/target/surefire-reports/**"
           - "**/target/site/jacoco/**"
@@ -41,8 +41,18 @@ definitions:
         script:
           - cd frontend/mobile-technician
           - npm ci
+          - npm run lint
           - npm run build -- --configuration production
           - npm run test:ci
+    - step: &security-scan
+        name: Dependency vulnerability scan
+        caches:
+          - maven
+        script:
+          - cd backend
+          - mvn -B dependency-check:check
+        artifacts:
+          - "**/target/dependency-check-report.html"
 
 pipelines:
   pull-requests:
@@ -51,6 +61,7 @@ pipelines:
           - step: *backend-build
           - step: *frontend-web-build
           - step: *frontend-mobile-build
+          - step: *security-scan
   branches:
     develop:
       - step: *backend-build
@@ -62,7 +73,7 @@ pipelines:
             - export TAG=$BITBUCKET_COMMIT_SHORT
             - |
               for svc in api-gateway auth-service orders-service notification-service analytics-service; do
-                docker build -t "fieldops/$svc:$TAG" "backend/$svc"
+                docker build -t "fieldops/$svc:$TAG" -f "backend/$svc/Dockerfile" .
               done
     main:
       - step: *backend-build
@@ -77,18 +88,7 @@ pipelines:
             - export TAG=${BITBUCKET_TAG:-$BITBUCKET_COMMIT_SHORT}
             - |
               for svc in api-gateway auth-service orders-service notification-service analytics-service; do
-                docker build -t "$REGISTRY/fieldops/$svc:$TAG" -t "$REGISTRY/fieldops/$svc:latest" "backend/$svc"
+                docker build -t "$REGISTRY/fieldops/$svc:$TAG" -t "$REGISTRY/fieldops/$svc:latest" -f "backend/$svc/Dockerfile" .
                 docker push "$REGISTRY/fieldops/$svc:$TAG"
                 docker push "$REGISTRY/fieldops/$svc:latest"
               done
-  custom:
-    security-scan:
-      - step:
-          name: Dependency vulnerability scan
-          caches:
-            - maven
-          script:
-            - cd backend
-            - mvn -B dependency-check:check
-          artifacts:
-            - "**/target/dependency-check-report.html"

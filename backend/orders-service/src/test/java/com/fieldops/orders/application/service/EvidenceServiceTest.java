@@ -133,7 +133,7 @@ class EvidenceServiceTest {
         EvidenceResponse response = service.uploadEvidence(1L, file, null, 50L);
 
         assertThat(response).isNotNull();
-        assertThat(response.filePath()).endsWith(".png");
+        assertThat(response.filePath()).isEqualTo("/api/v1/work-orders/1/evidence/101/content");
 
         ArgumentCaptor<WorkOrderEvidence> captor = ArgumentCaptor.forClass(WorkOrderEvidence.class);
         verify(evidenceRepository).save(captor.capture());
@@ -164,7 +164,7 @@ class EvidenceServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.contentType()).isEqualTo("image/png");
-        assertThat(response.filePath()).endsWith(".png");
+        assertThat(response.filePath()).isEqualTo("/api/v1/work-orders/1/evidence/102/content");
     }
 
     @Test

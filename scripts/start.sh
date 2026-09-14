@@ -26,6 +26,16 @@ for svc in orders auth notifications analytics; do
   fi
 done
 
+# Token de servicio interno (auth-service <-> notification-service)
+if ! grep -q "^INTERNAL_SERVICE_TOKEN=." .env; then
+  TOKEN="$(openssl rand -hex 32)"
+  if grep -q "^INTERNAL_SERVICE_TOKEN=" .env; then
+    sed -i "s|^INTERNAL_SERVICE_TOKEN=.*|INTERNAL_SERVICE_TOKEN=${TOKEN}|" .env
+  else
+    echo "INTERNAL_SERVICE_TOKEN=${TOKEN}" >> .env
+  fi
+fi
+
 source .env
 
 if [ ! -f "$ROOT/keys/private.pem" ]; then
@@ -42,9 +52,15 @@ docker compose up -d sqlserver kafka schema-registry akhq mailhog
 
 echo "Esperando a que la infraestructura esté lista..."
 for service in sqlserver kafka schema-registry; do
-  until [ "$(docker inspect -f '{{.State.Health.Status}}' "fieldops-$service" 2>/dev/null)" = "healthy" ]; do
+  count=0
+  until [ "$(docker inspect -f '{{.State.Health.Status}}' "fieldops-$service" 2>/dev/null)" = "healthy" ] || [ $count -ge 40 ]; do
     sleep 3
+    count=$((count + 1))
   done
+  if [ "$(docker inspect -f '{{.State.Health.Status}}' "fieldops-$service" 2>/dev/null)" != "healthy" ]; then
+    echo "ERROR: $service no alcanzó el estado healthy tras el tiempo de espera."
+    exit 1
+  fi
   echo "  $service listo"
 done
 
@@ -52,9 +68,13 @@ echo "Verificando y creando bases de datos relacionales y usuarios por servicio.
 docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
   -v AUTH_DB_PASSWORD="$AUTH_DB_PASSWORD" \
+     AUTH_MIGRATOR_PASSWORD="${AUTH_MIGRATOR_PASSWORD:-$AUTH_DB_PASSWORD}" \
      ORDERS_DB_PASSWORD="$ORDERS_DB_PASSWORD" \
+     ORDERS_MIGRATOR_PASSWORD="${ORDERS_MIGRATOR_PASSWORD:-$ORDERS_DB_PASSWORD}" \
      NOTIFICATIONS_DB_PASSWORD="$NOTIFICATIONS_DB_PASSWORD" \
+     NOTIFICATIONS_MIGRATOR_PASSWORD="${NOTIFICATIONS_MIGRATOR_PASSWORD:-$NOTIFICATIONS_DB_PASSWORD}" \
      ANALYTICS_DB_PASSWORD="$ANALYTICS_DB_PASSWORD" \
+     ANALYTICS_MIGRATOR_PASSWORD="${ANALYTICS_MIGRATOR_PASSWORD:-$ANALYTICS_DB_PASSWORD}" \
   -i /dev/stdin < "$ROOT/infra/sql/00_create_databases.sql"
 echo "Bases de datos y usuarios verificados."
 
@@ -72,6 +92,10 @@ for service in auth-service orders-service notification-service analytics-servic
     sleep 2
     count=$((count + 1))
   done
+  if [ "$(docker inspect -f '{{.State.Health.Status}}' "fieldops-$service" 2>/dev/null)" != "healthy" ]; then
+    echo "ERROR: $service no alcanzó el estado healthy tras 120 segundos."
+    exit 1
+  fi
   echo "  $service listo"
 done
 echo "Microservicios verificados."

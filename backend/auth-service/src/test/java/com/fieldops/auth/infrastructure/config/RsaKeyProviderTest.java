@@ -25,6 +25,7 @@ class RsaKeyProviderTest {
         JwtProperties props = new JwtProperties();
         props.setKeyPath(tempDir.toString());
         props.setKeyId("test-key-id");
+        props.setAllowKeyGeneration(true);
 
         RsaKeyProvider provider = new RsaKeyProvider(props);
         provider.afterPropertiesSet();
