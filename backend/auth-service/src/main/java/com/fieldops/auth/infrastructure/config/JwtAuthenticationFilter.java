@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,9 +22,14 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final RsaKeyProvider rsaKeyProvider;
+    private final String internalToken;
 
-    public JwtAuthenticationFilter(RsaKeyProvider rsaKeyProvider) {
+    public JwtAuthenticationFilter(
+            RsaKeyProvider rsaKeyProvider,
+            @Value("${fieldops.security.internal-token:fieldops-internal-secret}") String internalToken
+    ) {
         this.rsaKeyProvider = rsaKeyProvider;
+        this.internalToken = internalToken;
     }
 
     @Override
@@ -32,6 +38,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        String internalTokenHeader = request.getHeader("X-Internal-Token");
+        if (internalToken != null && !internalToken.isBlank() && internalToken.equals(internalTokenHeader)) {
+            UserPrincipal principal = new UserPrincipal(0L, "internal-service", List.of("ROLE_INTERNAL_SERVICE", "ROLE_SUPERVISOR"));
+            List<SimpleGrantedAuthority> authorities = List.of(
+                    new SimpleGrantedAuthority("ROLE_INTERNAL_SERVICE"),
+                    new SimpleGrantedAuthority("ROLE_SUPERVISOR")
+            );
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {

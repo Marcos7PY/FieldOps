@@ -23,4 +23,12 @@ export class ClientsService {
   createClient(payload: CreateClientRequest): Observable<Client> {
     return this.http.post<Client>(this.baseUrl, payload);
   }
+
+  updateClient(id: number, payload: CreateClientRequest): Observable<Client> {
+    return this.http.put<Client>(`${this.baseUrl}/${id}`, payload);
+  }
+
+  deactivateClient(id: number): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/${id}/deactivate`, {});
+  }
 }

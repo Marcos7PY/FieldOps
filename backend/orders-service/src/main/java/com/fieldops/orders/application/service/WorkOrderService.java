@@ -10,7 +10,6 @@ import com.fieldops.orders.application.dto.WorkOrderMetricsResponse;
 import com.fieldops.orders.domain.model.Priority;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import com.fieldops.orders.domain.exception.BusinessRuleViolationException;
@@ -289,23 +288,9 @@ public class WorkOrderService {
             ordersByPriority.put(priority, count);
         }
 
-        java.util.List<Object[]> completed = workOrderRepository.findCompletedDurations();
-        BigDecimal avgDuration = null;
-        if (!completed.isEmpty()) {
-            long totalMinutes = 0;
-            int count = 0;
-            for (Object[] row : completed) {
-                LocalDateTime start = (LocalDateTime) row[0];
-                LocalDateTime end = (LocalDateTime) row[1];
-                if (start != null && end != null && !end.isBefore(start)) {
-                    totalMinutes += Duration.between(start, end).toMinutes();
-                    count++;
-                }
-            }
-            if (count > 0) {
-                avgDuration = BigDecimal.valueOf((double) totalMinutes / count)
-                        .setScale(2, RoundingMode.HALF_UP);
-            }
+        BigDecimal avgDuration = workOrderRepository.findAverageCompletionMinutes();
+        if (avgDuration != null) {
+            avgDuration = avgDuration.setScale(2, RoundingMode.HALF_UP);
         }
 
         return new WorkOrderMetricsResponse(totalOrders, ordersByStatus, ordersByPriority, avgDuration);

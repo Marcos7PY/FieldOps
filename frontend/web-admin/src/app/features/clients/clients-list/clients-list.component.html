@@ -1,0 +1,207 @@
+<div class="clients-page">
+  <div class="page-header">
+    <h1 class="page-title">
+      <mat-icon>business</mat-icon>
+      Clientes
+    </h1>
+    <button mat-raised-button color="primary" (click)="openCreateForm()">
+      <mat-icon>add</mat-icon>
+      Nuevo Cliente
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar por nombre o NIF/CIF</mat-label>
+      <input matInput [formControl]="searchControl" placeholder="Ej. Empresa S.L." />
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Create / Edit Form -->
+  @if (showForm()) {
+    <div class="form-card">
+      <h2 class="form-title">
+        {{ editingClient() ? 'Editar Cliente' : 'Nuevo Cliente' }}
+      </h2>
+
+      @if (formError()) {
+        <div class="form-error-banner" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ formError() }}</span>
+        </div>
+      }
+
+      <form [formGroup]="clientForm" (ngSubmit)="submitForm()" class="client-form">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>Nombre / Razón Social *</mat-label>
+            <input matInput formControlName="businessName" maxlength="200" />
+            @if (clientForm.controls.businessName.hasError('required')) {
+              <mat-error>El nombre es obligatorio.</mat-error>
+            }
+            @if (clientForm.controls.businessName.hasError('minlength')) {
+              <mat-error>Mínimo 2 caracteres.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>NIF / CIF *</mat-label>
+            <input matInput formControlName="taxId" maxlength="20" />
+            @if (clientForm.controls.taxId.hasError('required')) {
+              <mat-error>El NIF/CIF es obligatorio.</mat-error>
+            }
+            @if (clientForm.controls.taxId.hasError('minlength')) {
+              <mat-error>Mínimo 9 caracteres.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>Teléfono</mat-label>
+            <input matInput formControlName="phone" maxlength="30" />
+            <mat-icon matPrefix>phone</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>Dirección</mat-label>
+            <input matInput formControlName="address" maxlength="300" />
+            <mat-icon matPrefix>location_on</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="cancelForm()" [disabled]="formSaving()">
+            Cancelar
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            [disabled]="clientForm.invalid || formSaving()"
+          >
+            @if (formSaving()) {
+              <mat-icon class="spin">autorenew</mat-icon>
+              Guardando...
+            } @else {
+              <mat-icon>save</mat-icon>
+              {{ editingClient() ? 'Actualizar' : 'Crear' }}
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
+      <button mat-button (click)="loadClients()">
+        <mat-icon>refresh</mat-icon>
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <!-- Clients Table -->
+  <div class="table-wrapper mat-elevation-z2">
+    <table mat-table [dataSource]="clients()" class="clients-table">
+      <!-- businessName -->
+      <ng-container matColumnDef="businessName">
+        <th mat-header-cell *matHeaderCellDef>Nombre / Razón Social</th>
+        <td mat-cell *matCellDef="let client">
+          <strong>{{ client.businessName }}</strong>
+        </td>
+      </ng-container>
+
+      <!-- taxId -->
+      <ng-container matColumnDef="taxId">
+        <th mat-header-cell *matHeaderCellDef>NIF / CIF</th>
+        <td mat-cell *matCellDef="let client" class="mono">{{ client.taxId }}</td>
+      </ng-container>
+
+      <!-- phone -->
+      <ng-container matColumnDef="phone">
+        <th mat-header-cell *matHeaderCellDef>Teléfono</th>
+        <td mat-cell *matCellDef="let client">{{ client.phone ?? '—' }}</td>
+      </ng-container>
+
+      <!-- address -->
+      <ng-container matColumnDef="address">
+        <th mat-header-cell *matHeaderCellDef>Dirección</th>
+        <td mat-cell *matCellDef="let client" class="address-cell">
+          {{ client.address ?? '—' }}
+        </td>
+      </ng-container>
+
+      <!-- active -->
+      <ng-container matColumnDef="active">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let client">
+          <span
+            class="status-badge"
+            [class.active]="client.active"
+            [class.inactive]="!client.active"
+          >
+            {{ client.active ? 'Activo' : 'Inactivo' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- actions -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let client">
+          <button
+            mat-icon-button
+            color="primary"
+            (click)="openEditForm(client)"
+            matTooltip="Editar cliente"
+          >
+            <mat-icon>edit</mat-icon>
+          </button>
+          @if (client.active) {
+            <button
+              mat-icon-button
+              color="warn"
+              (click)="deactivateClient(client)"
+              matTooltip="Desactivar cliente"
+            >
+              <mat-icon>block</mat-icon>
+            </button>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+      <!-- Empty State -->
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+          @if (loading()) {
+            <span>Cargando...</span>
+          } @else {
+            <span>No se encontraron clientes.</span>
+          }
+        </td>
+      </tr>
+    </table>
+
+    <mat-paginator
+      [length]="totalClients()"
+      [pageSize]="pageSize()"
+      [pageIndex]="pageIndex()"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onPageChange($event)"
+      showFirstLastButtons
+    ></mat-paginator>
+  </div>
+</div>

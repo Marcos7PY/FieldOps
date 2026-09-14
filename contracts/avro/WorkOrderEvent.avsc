@@ -62,8 +62,8 @@
           "doc": "Payload del evento ORDER_ASSIGNED",
           "fields": [
             { "name": "technicianId", "type": "string" },
-            { "name": "technicianEmail", "type": "string" },
-            { "name": "technicianName", "type": "string" },
+            { "name": "technicianEmail", "type": ["null", "string"], "default": null },
+            { "name": "technicianName", "type": ["null", "string"], "default": null },
             {
               "name": "scheduledAt",
               "type": {
@@ -104,7 +104,8 @@
               }
             },
             { "name": "durationMinutes", "type": "int" },
-            { "name": "evidenceCount", "type": "int" }
+            { "name": "evidenceCount", "type": "int" },
+            { "name": "createdBy", "type": ["null", "string"], "default": null }
           ]
         },
         {

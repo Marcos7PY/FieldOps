@@ -24,7 +24,7 @@ describe('AuthService', () => {
   };
 
   beforeEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [AuthService, provideHttpClient(), provideHttpClientTesting()],
@@ -36,7 +36,7 @@ describe('AuthService', () => {
 
   afterEach(() => {
     httpMock.verify();
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('should be created with initial unauthenticated state', () => {
@@ -47,7 +47,7 @@ describe('AuthService', () => {
     expect(service.getRefreshToken()).toBeNull();
   });
 
-  it('should authenticate user, store access token in memory and refresh token in localStorage on login', () => {
+  it('should authenticate user, store access token in memory and refresh token in sessionStorage on login', () => {
     const credentials: LoginRequest = { username: 'supervisor', password: 'Password123!' };
 
     service.login(credentials).subscribe((response) => {
@@ -75,7 +75,7 @@ describe('AuthService', () => {
   });
 
   it('should refresh token using stored refresh token', () => {
-    localStorage.setItem('fieldops_refresh_token', 'stored-refresh-token');
+    sessionStorage.setItem('fieldops_refresh_token', 'stored-refresh-token');
 
     const newResponse: AuthResponse = {
       accessToken: 'new-access-token',

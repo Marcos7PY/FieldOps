@@ -1,0 +1,62 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="warning">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/orders" text="Atrás"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Conflictos de Sincronización</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar..." refreshingSpinner="crescent">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  @if (loading() && conflicts().length === 0) {
+  <div class="center-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p class="loading-text">Cargando incidencias pendientes...</p>
+  </div>
+  } @else if (conflicts().length === 0) {
+  <div class="center-container">
+    <ion-icon name="alert-circle-outline" class="empty-icon"></ion-icon>
+    <p class="empty-title">Sin conflictos pendientes</p>
+    <p class="empty-subtitle">
+      Todas las operaciones locales fueron sincronizadas correctamente con el servidor.
+    </p>
+  </div>
+  } @else {
+  <ion-list class="conflicts-list">
+    @for (op of conflicts(); track op.id) {
+    <ion-item button (click)="goToDetail(op.id)" detail="false" class="conflict-item">
+      <div class="conflict-card-content">
+        <div class="conflict-header-row">
+          <span class="order-id-label">Orden #{{ op.orderId }}</span>
+          <ion-badge [color]="getStatusBadgeColor(op.status)">
+            {{ getStatusLabel(op.status) }}
+          </ion-badge>
+        </div>
+
+        <h3 class="operation-title">{{ getOperationDescription(op) }}</h3>
+
+        @if (op.lastError) {
+        <p class="error-detail">
+          <ion-icon name="warning-outline"></ion-icon>
+          {{ op.lastError }}
+        </p>
+        }
+
+        <div class="meta-row">
+          <span class="created-at">Encolado: {{ op.createdAt | date:'short' }}</span>
+          @if (op.retryCount > 0) {
+          <span class="retry-count">Reintentos: {{ op.retryCount }}</span>
+          }
+        </div>
+      </div>
+      <ion-icon slot="end" name="chevron-forward-outline" class="chevron-icon"></ion-icon>
+    </ion-item>
+    }
+  </ion-list>
+  }
+</ion-content>

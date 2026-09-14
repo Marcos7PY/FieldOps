@@ -2,11 +2,25 @@
   <ion-toolbar color="primary">
     <ion-title>Mis Órdenes</ion-title>
     <ion-buttons slot="end">
+      @if (conflictCount() > 0) {
+      <ion-button (click)="goToConflicts()" title="Conflictos de sincronización" color="danger">
+        <ion-icon slot="icon-only" name="warning-outline"></ion-icon>
+        <ion-badge color="danger" class="toolbar-badge">{{ conflictCount() }}</ion-badge>
+      </ion-button>
+      }
       <ion-button (click)="logout()" title="Cerrar sesión">
         <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
+  @if (db.storageMode() !== 'sqlite') {
+  <div class="storage-degraded-banner">
+    <ion-badge color="warning">
+      <ion-icon name="warning-outline"></ion-icon>
+      Almacenamiento: {{ db.storageMode() }}
+    </ion-badge>
+  </div>
+  }
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding-bottom">

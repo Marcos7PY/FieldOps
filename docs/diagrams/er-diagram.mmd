@@ -1,4 +1,4 @@
-﻿erDiagram
+erDiagram
     USERS {
         bigint id PK
         varchar email UK
@@ -49,7 +49,8 @@
         datetime2 scheduled_at
         datetime2 started_at
         datetime2 completed_at
-        bigint row_version
+        bigint version
+        bigint created_by
         datetime2 created_at
         datetime2 updated_at
     }
@@ -94,8 +95,10 @@
         bigint order_id
         varchar recipient_email
         varchar subject
-        nvarchar body
+        varchar template_name
         varchar status
+        nvarchar error_message
+        datetime2 created_at
         datetime2 sent_at
     }
 

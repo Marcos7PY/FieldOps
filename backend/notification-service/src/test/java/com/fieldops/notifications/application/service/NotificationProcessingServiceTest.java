@@ -4,10 +4,8 @@ import com.fieldops.events.avro.OrderAssignedPayload;
 import com.fieldops.events.avro.OrderCompletedPayload;
 import com.fieldops.events.avro.OrderCreatedPayload;
 import com.fieldops.events.avro.WorkOrderEvent;
-import com.fieldops.notifications.domain.model.NotificationLog;
-import com.fieldops.notifications.domain.model.ProcessedEvent;
 import com.fieldops.notifications.domain.model.ProcessedEventId;
-import com.fieldops.notifications.infrastructure.persistence.NotificationLogRepository;
+import com.fieldops.notifications.infrastructure.client.UserDirectoryClient;
 import com.fieldops.notifications.infrastructure.persistence.ProcessedEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,13 +13,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,10 +36,13 @@ class NotificationProcessingServiceTest {
     private ProcessedEventRepository processedEventRepository;
 
     @Mock
-    private NotificationLogRepository notificationLogRepository;
+    private NotificationLogWriter notificationLogWriter;
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private UserDirectoryClient userDirectoryClient;
 
     private NotificationProcessingService service;
 
@@ -43,8 +50,9 @@ class NotificationProcessingServiceTest {
     void setUp() {
         service = new DefaultNotificationProcessingService(
                 processedEventRepository,
-                notificationLogRepository,
-                emailService
+                notificationLogWriter,
+                emailService,
+                userDirectoryClient
         );
     }
 
@@ -67,14 +75,17 @@ class NotificationProcessingServiceTest {
     }
 
     @Test
-    void shouldProcessOrderAssignedAndSaveProcessedEvent() {
+    void shouldProcessOrderAssignedWithResolvedUserAndSaveProcessedEvent() {
         String eventId = UUID.randomUUID().toString();
         Instant scheduledAt = Instant.now();
 
+        when(userDirectoryClient.findUserById(42L)).thenReturn(Optional.of(new UserDirectoryClient.UserDto(
+                42L, "tecnico2", "Carlos Gomez Real", "otro@ejemplo.com", List.of("ROLE_TECHNICIAN")
+        )));
+        when(notificationLogWriter.recordAttempt(any(), eq(eventId))).thenReturn(100L);
+
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId("42")
-                .setTechnicianEmail("tecnico42@fieldops.com")
-                .setTechnicianName("Carlos Gomez")
                 .setScheduledAt(scheduledAt)
                 .build();
 
@@ -90,34 +101,32 @@ class NotificationProcessingServiceTest {
 
         service.processAndRecord(event, "notification-group");
 
-        verify(emailService).sendOrderAssignedNotification(
-                eq("tecnico42@fieldops.com"),
-                eq("Carlos Gomez"),
-                eq("ORD-2026-0001"),
-                any(String.class)
-        );
+        ArgumentCaptor<NotificationPlan> planCaptor = ArgumentCaptor.forClass(NotificationPlan.class);
+        verify(emailService).send(planCaptor.capture());
+        assertThat(planCaptor.getValue().recipient()).isEqualTo("otro@ejemplo.com");
+        assertThat(((OrderAssignedPlan) planCaptor.getValue()).technicianName()).isEqualTo("Carlos Gomez Real");
 
-        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
-        verify(notificationLogRepository).save(logCaptor.capture());
-        assertThat(logCaptor.getValue().getEventId()).isEqualTo(eventId);
-        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
-
-        ArgumentCaptor<ProcessedEvent> processedCaptor = ArgumentCaptor.forClass(ProcessedEvent.class);
-        verify(processedEventRepository).save(processedCaptor.capture());
-        assertThat(processedCaptor.getValue().getId().getEventId()).isEqualTo(eventId);
-        assertThat(processedCaptor.getValue().getId().getConsumerGroup()).isEqualTo("notification-group");
+        verify(notificationLogWriter).recordAttempt(any(), eq(eventId));
+        verify(notificationLogWriter).markSent(100L);
+        verify(notificationLogWriter).markProcessed(eventId, "notification-group");
     }
 
     @Test
-    void shouldProcessOrderCompletedAndSaveProcessedEvent() {
+    void shouldProcessOrderCompletedWithResolvedCreatedByAndSaveProcessedEvent() {
         String eventId = UUID.randomUUID().toString();
         Instant completedAt = Instant.now();
+
+        when(userDirectoryClient.findUserById(5L)).thenReturn(Optional.of(new UserDirectoryClient.UserDto(
+                5L, "supervisor1", "Ana Supervisor", "ana.supervisor@fieldops.com", List.of("ROLE_SUPERVISOR")
+        )));
+        when(notificationLogWriter.recordAttempt(any(), eq(eventId))).thenReturn(101L);
 
         OrderCompletedPayload payload = OrderCompletedPayload.newBuilder()
                 .setTechnicianId("42")
                 .setCompletedAt(completedAt)
                 .setDurationMinutes(90)
                 .setEvidenceCount(2)
+                .setCreatedBy("5")
                 .build();
 
         WorkOrderEvent event = WorkOrderEvent.newBuilder()
@@ -132,22 +141,42 @@ class NotificationProcessingServiceTest {
 
         service.processAndRecord(event, "notification-group");
 
-        verify(emailService).sendOrderCompletedNotification(
-                eq("supervisor@fieldops.com"),
-                eq("ORD-2026-0002"),
-                eq("42"),
-                eq(90),
-                eq(2),
-                any(String.class)
-        );
+        ArgumentCaptor<NotificationPlan> planCaptor = ArgumentCaptor.forClass(NotificationPlan.class);
+        verify(emailService).send(planCaptor.capture());
+        assertThat(planCaptor.getValue().recipient()).isEqualTo("ana.supervisor@fieldops.com");
 
-        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
-        verify(notificationLogRepository).save(logCaptor.capture());
-        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
+        verify(notificationLogWriter).markSent(101L);
+        verify(notificationLogWriter).markProcessed(eventId, "notification-group");
+    }
 
-        ArgumentCaptor<ProcessedEvent> processedCaptor = ArgumentCaptor.forClass(ProcessedEvent.class);
-        verify(processedEventRepository).save(processedCaptor.capture());
-        assertThat(processedCaptor.getValue().getId().getEventId()).isEqualTo(eventId);
+    @Test
+    void shouldMarkFailedAndNotMarkProcessedWhenEmailFails() {
+        String eventId = UUID.randomUUID().toString();
+        when(userDirectoryClient.findUserById(42L)).thenReturn(Optional.empty());
+        when(notificationLogWriter.recordAttempt(any(), eq(eventId))).thenReturn(102L);
+        doThrow(new MailSendException("SMTP connection refused")).when(emailService).send(any(NotificationPlan.class));
+
+        OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
+                .setTechnicianId("42")
+                .setScheduledAt(Instant.now())
+                .build();
+
+        WorkOrderEvent event = WorkOrderEvent.newBuilder()
+                .setEventId(eventId)
+                .setEventType("ORDER_ASSIGNED")
+                .setOrderId(101L)
+                .setOrderCode("ORD-2026-0001")
+                .setOccurredAt(Instant.now())
+                .setSchemaVersion(1)
+                .setPayload(payload)
+                .build();
+
+        assertThatThrownBy(() -> service.processAndRecord(event, "notification-group"))
+                .isInstanceOf(MailSendException.class);
+
+        verify(notificationLogWriter).markFailed(102L, "SMTP connection refused");
+        verify(notificationLogWriter, never()).markSent(any());
+        verify(notificationLogWriter, never()).markProcessed(any(), any());
     }
 
     @Test
@@ -165,8 +194,7 @@ class NotificationProcessingServiceTest {
 
         service.processAndRecord(event, "notification-group");
 
-        ArgumentCaptor<ProcessedEvent> processedCaptor = ArgumentCaptor.forClass(ProcessedEvent.class);
-        verify(processedEventRepository).save(processedCaptor.capture());
-        assertThat(processedCaptor.getValue().getId().getEventId()).isEqualTo(eventId);
+        verify(notificationLogWriter).markProcessed(eventId, "notification-group");
+        verify(notificationLogWriter, never()).recordAttempt(any(), any());
     }
 }

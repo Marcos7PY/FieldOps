@@ -1,10 +1,13 @@
 package com.fieldops.analytics.api.controller;
 
 import com.fieldops.analytics.api.dto.DailyMetricsResponse;
+import com.fieldops.analytics.api.dto.RebuildStatusResponse;
 import com.fieldops.analytics.api.dto.TechnicianMetricsResponse;
 import com.fieldops.analytics.application.service.AnalyticsQueryService;
 import com.fieldops.analytics.application.service.ProjectionRebuildService;
+import com.fieldops.analytics.domain.exception.RebuildAlreadyInProgressException;
 import com.fieldops.analytics.infrastructure.config.SecurityConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -16,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -96,6 +100,31 @@ class AnalyticsControllerTest {
                 .andExpect(jsonPath("$.message").isNotEmpty());
 
         verify(rebuildService).rebuildProjectionAsync();
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERVISOR")
+    @DisplayName("F3-T04: Devuelve 409 Conflict si ya hay una reconstrucción en curso")
+    void shouldReturn409WhenRebuildAlreadyInProgress() throws Exception {
+        when(rebuildService.rebuildProjectionAsync())
+                .thenThrow(new RebuildAlreadyInProgressException("Ya hay una reconstrucción de proyección en curso"));
+
+        mockMvc.perform(post("/api/v1/analytics/projections/rebuild"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya hay una reconstrucción de proyección en curso"));
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERVISOR")
+    @DisplayName("F3-T04: GET /projections/rebuild/status devuelve el estado de reconstrucción")
+    void shouldReturnRebuildStatus() throws Exception {
+        LocalDateTime timestamp = LocalDateTime.of(2026, 9, 13, 12, 0);
+        when(rebuildService.getRebuildStatus()).thenReturn(new RebuildStatusResponse(false, timestamp));
+
+        mockMvc.perform(get("/api/v1/analytics/projections/rebuild/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.inProgress").value(false))
+                .andExpect(jsonPath("$.lastRebuiltAt").isNotEmpty());
     }
 
     @Test

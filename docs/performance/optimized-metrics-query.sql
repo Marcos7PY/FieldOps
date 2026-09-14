@@ -1,6 +1,6 @@
 -- ============================================================================
 -- FieldOps: docs/performance/optimized-metrics-query.sql
--- Consulta de métricas reescrita y 100% sargable sobre 500.000 órdenes
+-- Consultas de métricas optimizadas ejecutadas por orders-service (GET /api/v1/work-orders/metrics)
 -- ============================================================================
 
 USE fieldops_orders;
@@ -10,18 +10,53 @@ SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
 GO
 
-DECLARE @from_datetime DATETIME2 = '2026-01-01 00:00:00';
-DECLARE @to_exclusive_datetime DATETIME2 = '2026-04-01 00:00:00';
+-- ============================================================================
+-- 1. Cálculo de duración promedio de órdenes completadas
+-- Invocada por: WorkOrderRepository.findAverageCompletionMinutes()
+-- Apoyada por: ix_work_order_completed_duration (V5__metrics_covering_index.sql)
+--
+-- Antes: La aplicación transfería las fechas de 350.000 filas completadas hacia
+--        la memoria JVM (~35 MB de red, ~280 MB en heap) para calcular la media en un bucle Java.
+-- Después: El motor relacional calcula AVG(DATEDIFF(...)) en una única pasada
+--          utilizando el índice filtrado y devuelve un único valor escalar (1 fila, < 1 KB).
+-- ============================================================================
+
+SELECT AVG(CAST(DATEDIFF(MINUTE, started_at, completed_at) AS DECIMAL(18,4))) AS avg_duration_minutes
+FROM work_order
+WHERE status = 'COMPLETED'
+  AND started_at IS NOT NULL
+  AND completed_at IS NOT NULL
+  AND completed_at >= started_at;
+GO
 
 -- ============================================================================
--- Consulta sargable optimizada:
--- 1. Se elimina CAST(scheduled_at AS DATE) en el predicado WHERE, sustituyéndolo
---    por un intervalo semiabierto sobre la columna limpia ([from, to)).
--- 2. Se eliminan las 3 subconsultas correlacionadas, unificando el cálculo
---    en una sola pasada (single-pass conditional aggregation) con COUNT(CASE...).
--- 3. Se traslada el cálculo de duración promedio de la JVM al motor relacional
---    con AVG(CASE WHEN ... THEN DATEDIFF(minute, started_at, completed_at) END).
+-- 2. Conteo agrupado por estado
+-- Invocada por: WorkOrderRepository.countGroupedByStatus()
 -- ============================================================================
+
+SELECT status, COUNT(*) AS count_by_status
+FROM work_order
+GROUP BY status;
+GO
+
+-- ============================================================================
+-- 3. Conteo agrupado por prioridad
+-- Invocada por: WorkOrderRepository.countGroupedByPriority()
+-- ============================================================================
+
+SELECT priority, COUNT(*) AS count_by_priority
+FROM work_order
+GROUP BY priority;
+GO
+
+-- ============================================================================
+-- 4. Consulta analítica condicional por rango de fechas (ejemplo de reporte)
+-- Reescritura 100% sargable con agregación condicional en una sola pasada
+-- Apoyada por: ix_work_order_status_scheduled_inc (V4__performance_indexes.sql)
+-- ============================================================================
+
+DECLARE @from_datetime DATETIME2 = '2026-01-01 00:00:00';
+DECLARE @to_exclusive_datetime DATETIME2 = '2026-04-01 00:00:00';
 
 SELECT 
     COUNT(*) AS total_orders,

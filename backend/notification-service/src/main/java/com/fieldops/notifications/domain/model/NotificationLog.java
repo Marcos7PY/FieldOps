@@ -32,6 +32,12 @@ public class NotificationLog {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @Column(name = "error_message", length = 1000)
+    private String errorMessage;
+
+    @Column(name = "attempts", nullable = false)
+    private int attempts = 0;
+
     public NotificationLog() {
     }
 
@@ -89,5 +95,21 @@ public class NotificationLog {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public int getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(int attempts) {
+        this.attempts = attempts;
     }
 }

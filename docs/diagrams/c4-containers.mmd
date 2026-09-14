@@ -1,12 +1,12 @@
-﻿graph TB
+graph TB
     subgraph Users ["Usuarios del Sistema"]
         Admin["Supervisor / Administrador<br/>[Web Browser]"]
         Tech["Técnico de Campo<br/>[Mobile Device]"]
     end
 
     subgraph Frontends ["Aplicaciones Cliente"]
-        WebAdmin["Web Admin Portal<br/>[Angular 19, TypeScript, SCSS]<br/>Gestión de órdenes, asignación y métricas"]
-        MobileTech["Mobile Technician App<br/>[Ionic 8, Angular 19, Capacitor 7, SQLite]<br/>Ejecución offline-first y captura de evidencias"]
+        WebAdmin["Web Admin Portal<br/>[Angular 22, TypeScript, SCSS]<br/>Gestión de órdenes, asignación y métricas"]
+        MobileTech["Mobile Technician App<br/>[Ionic 9, Angular 22, Capacitor 8, SQLite]<br/>Ejecución offline-first y captura de evidencias"]
     end
 
     subgraph GatewayBoundary ["Punto de Entrada"]
@@ -56,6 +56,7 @@
     NotificationService -.->|Descarga esquemas| SchemaRegistry
     AnalyticsService -.->|Descarga esquemas| SchemaRegistry
 
+    NotificationService -.->|Resuelve usuarios HTTP /api/v1/users/{id}| AuthService
     NotificationService -->|Envía correos SMTP :1025| MailHog
 
     AuthService --> DbAuth

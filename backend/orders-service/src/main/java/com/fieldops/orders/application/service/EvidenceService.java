@@ -23,7 +23,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -31,10 +31,10 @@ import java.util.UUID;
 public class EvidenceService {
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp"
+    private static final Map<String, String> EXTENSION_BY_CONTENT_TYPE = Map.of(
+            "image/jpeg", ".jpg",
+            "image/png",  ".png",
+            "image/webp", ".webp"
     );
 
     private final WorkOrderRepository workOrderRepository;
@@ -81,17 +81,11 @@ public class EvidenceService {
         }
 
         validateFile(file);
+        String detectedContentType = detectContentType(file);
 
-        String originalFilename = file.getOriginalFilename();
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase();
-        } else {
-            extension = switch (file.getContentType()) {
-                case "image/png" -> ".png";
-                case "image/webp" -> ".webp";
-                default -> ".jpg";
-            };
+        String extension = EXTENSION_BY_CONTENT_TYPE.get(detectedContentType);
+        if (extension == null) {
+            throw new BusinessRuleViolationException("Tipo de contenido no admitido: " + detectedContentType);
         }
 
         String storedFileName = UUID.randomUUID() + extension;
@@ -107,7 +101,7 @@ public class EvidenceService {
         WorkOrderEvidence evidence = new WorkOrderEvidence();
         evidence.setWorkOrder(order);
         evidence.setFilePath("/uploads/" + storedFileName);
-        evidence.setContentType(file.getContentType());
+        evidence.setContentType(detectedContentType);
         evidence.setSizeBytes(file.getSize());
         evidence.setLatitude(metadata != null ? metadata.latitude() : null);
         evidence.setLongitude(metadata != null ? metadata.longitude() : null);
@@ -144,10 +138,30 @@ public class EvidenceService {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BusinessRuleViolationException("Evidence file size exceeds maximum limit of 5 MB");
         }
+    }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
-            throw new BusinessRuleViolationException("Invalid file type: " + contentType + ". Allowed: JPEG, PNG, WEBP");
+    private String detectContentType(MultipartFile file) {
+        byte[] header = new byte[12];
+        try (InputStream in = file.getInputStream()) {
+            int read = in.readNBytes(header, 0, 12);
+            if (read < 12) {
+                throw new BusinessRuleViolationException("Archivo de evidencia corrupto o demasiado pequeño");
+            }
+        } catch (IOException e) {
+            throw new BusinessRuleViolationException("No se pudo leer el archivo de evidencia");
         }
+
+        if ((header[0] & 0xFF) == 0xFF && (header[1] & 0xFF) == 0xD8 && (header[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        if ((header[0] & 0xFF) == 0x89 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G') {
+            return "image/png";
+        }
+        if (header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P') {
+            return "image/webp";
+        }
+        throw new BusinessRuleViolationException(
+                "El contenido del archivo no corresponde a una imagen JPEG, PNG o WEBP");
     }
 }

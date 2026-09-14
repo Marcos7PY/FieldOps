@@ -94,6 +94,13 @@ public class AuthService {
         return toUserResponse(user);
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new com.fieldops.auth.domain.exception.UserNotFoundException("User not found: " + id));
+        return toUserResponse(user);
+    }
+
     public UserResponse toUserResponse(User user) {
         List<String> roleNames = user.getRoles().stream()
                 .map(Role::getName)
@@ -103,6 +110,7 @@ public class AuthService {
                 user.getId(),
                 user.getUsername(),
                 user.getFullName(),
+                user.getEmail(),
                 roleNames
         );
     }

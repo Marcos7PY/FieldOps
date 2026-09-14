@@ -55,8 +55,6 @@ public class TransactionalOutboxService implements OutboxService {
         String techIdStr = String.valueOf(order.getAssignedTechnicianId());
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId(techIdStr)
-                .setTechnicianEmail("tecnico" + techIdStr + "@fieldops.com")
-                .setTechnicianName("Tecnico " + techIdStr)
                 .setScheduledAt(scheduledInstant)
                 .build();
 
@@ -100,6 +98,7 @@ public class TransactionalOutboxService implements OutboxService {
                 .setCompletedAt(completedInstant)
                 .setDurationMinutes(durationMinutes)
                 .setEvidenceCount(evidenceCount)
+                .setCreatedBy(order.getCreatedBy() != null ? String.valueOf(order.getCreatedBy()) : null)
                 .build();
 
         WorkOrderEvent event = buildEvent("ORDER_COMPLETED", order, payload);

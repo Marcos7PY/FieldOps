@@ -86,12 +86,12 @@ public class DefaultAnalyticsProjectionService implements AnalyticsProjectionSer
         // Insert processed_event in same transaction
         processedEventRepository.save(new ProcessedEvent(eventId, consumerGroup, now));
 
-        // Update checkpoint
-        ProjectionCheckpoint checkpoint = checkpointRepository.findById(consumerGroup)
-                .orElse(new ProjectionCheckpoint(consumerGroup, null, null, 0L));
-        checkpoint.setLastEventAt(LocalDateTime.ofInstant(event.getOccurredAt(), ZoneOffset.UTC));
-        checkpoint.setEventsProcessed(checkpoint.getEventsProcessed() + 1);
-        checkpointRepository.save(checkpoint);
+        // Atomic update of checkpoint (F3-T06)
+        LocalDateTime occurredDateTime = LocalDateTime.ofInstant(event.getOccurredAt(), ZoneOffset.UTC);
+        int updatedRows = checkpointRepository.incrementCheckpoint(consumerGroup, occurredDateTime);
+        if (updatedRows == 0) {
+            checkpointRepository.save(new ProjectionCheckpoint(consumerGroup, null, occurredDateTime, 1L));
+        }
     }
 
     private Long parseTechnicianId(String technicianId) {

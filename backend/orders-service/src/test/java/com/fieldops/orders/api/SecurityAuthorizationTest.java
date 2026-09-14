@@ -173,4 +173,67 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Business Rule Violation"));
     }
+
+    @Test
+    void f2t02_jwtWithoutUserIdClaim_shouldReturnForbidden() throws Exception {
+        CreateWorkOrderRequest orderReq = new CreateWorkOrderRequest(
+                "Order with invalid jwt",
+                "Description",
+                Priority.HIGH,
+                1L,
+                null,
+                null
+        );
+
+        // JWT con rol supervisor pero SIN userId claim
+        RequestPostProcessor supervisorWithoutUserId = jwt()
+                .authorities(new SimpleGrantedAuthority("ROLE_SUPERVISOR"))
+                .jwt(j -> j.claim("roles", List.of("ROLE_SUPERVISOR")));
+
+        mockMvc.perform(post("/api/v1/work-orders")
+                        .with(supervisorWithoutUserId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderReq)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("El token no contiene un identificador de usuario válido"));
+    }
+
+    @Test
+    void f2t04_assignWithoutIfMatch_shouldFail() throws Exception {
+        AssignWorkOrderRequest assignReq = new AssignWorkOrderRequest(10L, LocalDateTime.now().plusDays(1));
+
+        mockMvc.perform(patch("/api/v1/work-orders/1/assign")
+                        .with(supervisor(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(assignReq)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void f2t04_assignWithInvalidIfMatch_shouldReturnConflict() throws Exception {
+        AssignWorkOrderRequest assignReq = new AssignWorkOrderRequest(10L, LocalDateTime.now().plusDays(1));
+
+        mockMvc.perform(patch("/api/v1/work-orders/1/assign")
+                        .with(supervisor(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("If-Match", "\"abc\"")
+                        .content(objectMapper.writeValueAsString(assignReq)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("La cabecera If-Match debe contener una versión numérica válida"));
+    }
+
+    @Test
+    void f2t10_uploadsHeadersAndAuthentication() throws Exception {
+        // Sin token -> 401
+        mockMvc.perform(get("/uploads/test.png"))
+                .andExpect(status().isUnauthorized());
+
+        // Con token -> cabeceras de seguridad requeridas por F2-T10
+        mockMvc.perform(get("/uploads/test.png")
+                        .with(supervisor(1L)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Disposition", "attachment"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Security-Policy", "default-src 'none'; sandbox"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Cache-Control", "private, max-age=3600"));
+    }
 }

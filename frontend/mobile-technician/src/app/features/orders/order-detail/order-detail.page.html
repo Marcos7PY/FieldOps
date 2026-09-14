@@ -183,7 +183,7 @@
         expand="block"
         color="primary"
         class="action-btn"
-        [disabled]="updatingStatus()"
+        [disabled]="updatingStatus() || db.storageMode() === 'failed'"
         (click)="startWork()"
       >
         @if (updatingStatus()) {
@@ -197,7 +197,7 @@
         expand="block"
         color="success"
         class="action-btn"
-        [disabled]="updatingStatus()"
+        [disabled]="updatingStatus() || db.storageMode() === 'failed'"
         (click)="promptCompleteWork()"
       >
         @if (updatingStatus()) {

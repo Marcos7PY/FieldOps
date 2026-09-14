@@ -1,6 +1,7 @@
 package com.fieldops.orders.application.service;
 
 import com.fieldops.orders.application.dto.AssignWorkOrderRequest;
+import java.math.BigDecimal;
 import com.fieldops.orders.application.dto.ChangeStatusRequest;
 import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
 import com.fieldops.orders.application.dto.WorkOrderResponse;
@@ -323,11 +324,7 @@ class WorkOrderServiceTest {
                 new Object[]{Priority.HIGH, 7L},
                 new Object[]{Priority.MEDIUM, 3L}
         ));
-        LocalDateTime now = LocalDateTime.now();
-        when(workOrderRepository.findCompletedDurations()).thenReturn(java.util.List.of(
-                new Object[]{now.minusMinutes(60), now},
-                new Object[]{now.minusMinutes(120), now}
-        ));
+        when(workOrderRepository.findAverageCompletionMinutes()).thenReturn(new BigDecimal("90.00"));
 
         com.fieldops.orders.application.dto.WorkOrderMetricsResponse metrics = service.getMetrics();
 

@@ -13,6 +13,19 @@ if [ ! -f .env ]; then
   echo "Archivo .env creado desde la plantilla .env.example"
 fi
 
+# Generar contraseñas de BD aisladas por microservicio si no están fijadas (F2-T08)
+for svc in orders auth notifications analytics; do
+  VAR="$(echo "$svc" | tr '[:lower:]' '[:upper:]')_DB_PASSWORD"
+  if ! grep -q "^${VAR}=." .env; then
+    PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)Aa1!"
+    if grep -q "^${VAR}=" .env; then
+      sed -i "s|^${VAR}=.*|${VAR}=${PASS}|" .env
+    else
+      echo "${VAR}=${PASS}" >> .env
+    fi
+  fi
+done
+
 source .env
 
 if [ ! -f "$ROOT/keys/private.pem" ]; then
@@ -35,11 +48,15 @@ for service in sqlserver kafka schema-registry; do
   echo "  $service listo"
 done
 
-echo "Verificando y creando bases de datos relacionales..."
+echo "Verificando y creando bases de datos relacionales y usuarios por servicio..."
 docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
+  -v AUTH_DB_PASSWORD="$AUTH_DB_PASSWORD" \
+     ORDERS_DB_PASSWORD="$ORDERS_DB_PASSWORD" \
+     NOTIFICATIONS_DB_PASSWORD="$NOTIFICATIONS_DB_PASSWORD" \
+     ANALYTICS_DB_PASSWORD="$ANALYTICS_DB_PASSWORD" \
   -i /dev/stdin < "$ROOT/infra/sql/00_create_databases.sql"
-echo "Bases de datos verificadas."
+echo "Bases de datos y usuarios verificados."
 
 cd "$ROOT"
 ./scripts/create-topics.sh
@@ -48,13 +65,14 @@ echo "Levantando los cinco microservicios en contenedores..."
 cd "$ROOT/infra/docker"
 docker compose up -d auth-service orders-service notification-service analytics-service api-gateway
 
-echo "Esperando disponibilidad de los microservicios..."
-for port in 8081 8082 8083 8084 8080; do
+echo "Esperando disponibilidad de los microservicios vía healthchecks..."
+for service in auth-service orders-service notification-service analytics-service api-gateway; do
   count=0
-  until curl -sf "http://localhost:$port/actuator/health" >/dev/null 2>&1 || curl -sf "http://localhost:$port" >/dev/null 2>&1 || [ $count -ge 30 ]; do
+  until [ "$(docker inspect -f '{{.State.Health.Status}}' "fieldops-$service" 2>/dev/null)" = "healthy" ] || [ $count -ge 60 ]; do
     sleep 2
     count=$((count + 1))
   done
+  echo "  $service listo"
 done
 echo "Microservicios verificados."
 
@@ -67,10 +85,6 @@ echo "Datos de demostración aplicados."
 echo
 echo "=== Sistema FieldOps listo para operar ==="
 echo "  API Gateway:          http://localhost:8080"
-echo "  Auth Service:         http://localhost:8081"
-echo "  Orders Service:       http://localhost:8082"
-echo "  Notification Service: http://localhost:8083"
-echo "  Analytics Service:    http://localhost:8084"
 echo "  AKHQ (Kafka Web):     http://localhost:8091"
 echo "  MailHog (SMTP Web):   http://localhost:8025"
 echo

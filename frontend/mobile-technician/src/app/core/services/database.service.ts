@@ -1,17 +1,21 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import {
   LocalWorkOrder,
   PendingOperation,
   PendingOperationStatus,
+  StorageMode,
+  StorageUnavailableError,
   WorkOrder,
   WorkOrderSummary,
 } from '../models';
 
+export { StorageMode, StorageUnavailableError };
+
 const DB_NAME = 'fieldops_technician';
 
-const SCHEMA_DDL = `
+const SCHEMA_DDL_V1 = `
 CREATE TABLE IF NOT EXISTS local_work_order (
   id INTEGER PRIMARY KEY,
   code TEXT NOT NULL,
@@ -73,6 +77,9 @@ export class DatabaseService {
   private db: SQLiteDBConnection | null = null;
   private isInitialized = false;
 
+  private mode: StorageMode = 'failed';
+  readonly storageMode = signal<StorageMode>('failed');
+
   // In-memory fallback cache when SQLite plugin is not available (e.g. testing or unsupported web)
   private memoryOrders: Map<number, LocalWorkOrder> = new Map();
   private memoryOperations: Map<number, PendingOperation> = new Map();
@@ -81,15 +88,18 @@ export class DatabaseService {
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
+    const isTestOrWeb = Capacitor.getPlatform() === 'web';
+
     try {
       this.sqlite = new SQLiteConnection(CapacitorSQLite);
 
-      if (Capacitor.getPlatform() === 'web') {
+      if (isTestOrWeb) {
         const customElements = typeof window !== 'undefined' ? window.customElements : undefined;
         if (customElements && customElements.get('jeep-sqlite')) {
           await this.sqlite.initWebStore();
         } else {
-          // In browser without custom element defined or test environment, use memory fallback
+          this.mode = 'memory';
+          this.storageMode.set(this.mode);
           this.isInitialized = true;
           return;
         }
@@ -101,15 +111,63 @@ export class DatabaseService {
       if (ret.result && isConn) {
         this.db = await this.sqlite.retrieveConnection(DB_NAME, false);
       } else {
-        this.db = await this.sqlite.createConnection(DB_NAME, false, 'no-encryption', 1, false);
+        const encrypted = !isTestOrWeb;
+        const encryptionMode = encrypted ? 'encryption' : 'no-encryption';
+        this.db = await this.sqlite.createConnection(DB_NAME, encrypted, encryptionMode, 1, false);
       }
 
       await this.db.open();
-      await this.db.execute(SCHEMA_DDL);
+      await this.runMigrations();
+      this.mode = 'sqlite';
+      this.storageMode.set(this.mode);
       this.isInitialized = true;
-    } catch {
-      // Fallback mode enabled for testing environments
-      this.isInitialized = true;
+    } catch (error) {
+      if (isTestOrWeb) {
+        this.mode = 'memory';
+        this.storageMode.set(this.mode);
+        this.isInitialized = true;
+      } else {
+        this.mode = 'failed';
+        this.storageMode.set(this.mode);
+        this.isInitialized = false;
+        throw new StorageUnavailableError(
+          'No se pudo abrir la base de datos local. La aplicación no puede operar sin conexión.',
+          { cause: error }
+        );
+      }
+    }
+  }
+
+  private async runMigrations(): Promise<void> {
+    if (!this.db) return;
+
+    await this.db.execute(`
+      CREATE TABLE IF NOT EXISTS schema_version (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+    `);
+
+    const res = await this.db.query('SELECT MAX(version) as current_version FROM schema_version');
+    const currentVersion = (res.values?.[0]?.current_version as number) || 0;
+
+    const MIGRATIONS: Array<{ version: number; sql: string }> = [
+      { version: 1, sql: SCHEMA_DDL_V1 },
+      { version: 2, sql: 'ALTER TABLE pending_operation ADD COLUMN next_attempt_at TEXT;' },
+    ];
+
+    for (const migration of MIGRATIONS) {
+      if (migration.version > currentVersion) {
+        try {
+          await this.db.execute(migration.sql);
+        } catch {
+          // In case table or column already exists
+        }
+        await this.db.run(
+          'INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)',
+          [migration.version, new Date().toISOString()]
+        );
+      }
     }
   }
 
@@ -272,6 +330,7 @@ export class DatabaseService {
       retryCount: 0,
       lastError: null,
       status: 'PENDING',
+      nextAttemptAt: null,
     };
 
     this.memoryOperations.set(op.id, op);
@@ -280,8 +339,8 @@ export class DatabaseService {
       try {
         const sql = `
           INSERT INTO pending_operation (
-            operation_type, order_id, payload_json, created_at, retry_count, last_error, status
-          ) VALUES (?, ?, ?, ?, 0, NULL, 'PENDING')
+            operation_type, order_id, payload_json, created_at, retry_count, last_error, status, next_attempt_at
+          ) VALUES (?, ?, ?, ?, 0, NULL, 'PENDING', NULL)
         `;
         const res = await this.db.run(sql, [operationType, orderId, payloadJson, now]);
         if (res.changes?.lastId) {
@@ -310,6 +369,212 @@ export class DatabaseService {
     return Array.from(this.memoryOperations.values())
       .filter((o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS')
       .sort((a, b) => a.id - b.id);
+  }
+
+  async getPendingOperationById(id: number): Promise<PendingOperation | null> {
+    await this.initialize();
+
+    if (this.db) {
+      try {
+        const res = await this.db.query('SELECT * FROM pending_operation WHERE id = ?', [id]);
+        if (res.values && res.values.length > 0) {
+          return this.mapRowToPendingOp(res.values[0]);
+        }
+      } catch {}
+    }
+
+    return this.memoryOperations.get(id) || null;
+  }
+
+  async getPendingOperationsByOrder(orderId: number): Promise<PendingOperation[]> {
+    await this.initialize();
+
+    if (this.db) {
+      try {
+        const res = await this.db.query(
+          "SELECT * FROM pending_operation WHERE order_id = ? AND status IN ('PENDING', 'IN_PROGRESS') ORDER BY id ASC",
+          [orderId]
+        );
+        if (res.values) {
+          return res.values.map(this.mapRowToPendingOp);
+        }
+      } catch {}
+    }
+
+    return Array.from(this.memoryOperations.values())
+      .filter(
+        (o) => o.orderId === orderId && (o.status === 'PENDING' || o.status === 'IN_PROGRESS')
+      )
+      .sort((a, b) => a.id - b.id);
+  }
+
+  async blockPendingOperationsForOrder(orderId: number, failedOpId: number): Promise<void> {
+    await this.initialize();
+
+    for (const [id, op] of this.memoryOperations.entries()) {
+      if (
+        op.orderId === orderId &&
+        op.id !== failedOpId &&
+        (op.status === 'PENDING' || op.status === 'IN_PROGRESS')
+      ) {
+        op.status = 'BLOCKED_BY_CONFLICT';
+        op.lastError = 'Bloqueado por conflicto en operacion previa';
+        this.memoryOperations.set(id, op);
+      }
+    }
+
+    if (this.db) {
+      try {
+        await this.db.run(
+          "UPDATE pending_operation SET status = 'BLOCKED_BY_CONFLICT', last_error = 'Bloqueado por conflicto en operacion previa' WHERE order_id = ? AND id <> ? AND status IN ('PENDING', 'IN_PROGRESS')",
+          [orderId, failedOpId]
+        );
+      } catch {}
+    }
+  }
+
+  async unblockPendingOperationsForOrder(orderId: number, baseVersion: number): Promise<void> {
+    await this.initialize();
+
+    const blocked = Array.from(this.memoryOperations.values())
+      .filter((o) => o.orderId === orderId && o.status === 'BLOCKED_BY_CONFLICT')
+      .sort((a, b) => a.id - b.id);
+
+    let nextVersion = baseVersion;
+    for (const op of blocked) {
+      op.status = 'PENDING';
+      op.lastError = null;
+      op.nextAttemptAt = null;
+      if (op.operationType === 'STATUS_CHANGE') {
+        try {
+          const payload = JSON.parse(op.payloadJson);
+          payload.expectedVersion = nextVersion;
+          op.payloadJson = JSON.stringify(payload);
+          nextVersion++;
+        } catch {}
+      }
+      this.memoryOperations.set(op.id, op);
+    }
+
+    if (this.db) {
+      try {
+        const res = await this.db.query(
+          "SELECT * FROM pending_operation WHERE order_id = ? AND status = 'BLOCKED_BY_CONFLICT' ORDER BY id ASC",
+          [orderId]
+        );
+        if (res.values) {
+          let v = baseVersion;
+          for (const row of res.values) {
+            let pJson = row.payload_json;
+            if (row.operation_type === 'STATUS_CHANGE') {
+              try {
+                const p = JSON.parse(pJson);
+                p.expectedVersion = v;
+                pJson = JSON.stringify(p);
+                v++;
+              } catch {}
+            }
+            await this.db.run(
+              "UPDATE pending_operation SET status = 'PENDING', last_error = NULL, next_attempt_at = NULL, payload_json = ? WHERE id = ?",
+              [pJson, row.id]
+            );
+          }
+        }
+      } catch {}
+    }
+  }
+
+  async incrementRetryCount(id: number, error: string, nextAttemptAt?: string): Promise<number> {
+    await this.initialize();
+
+    const op = this.memoryOperations.get(id);
+    let count = 1;
+    if (op) {
+      op.retryCount++;
+      op.lastError = error;
+      if (nextAttemptAt) op.nextAttemptAt = nextAttemptAt;
+      count = op.retryCount;
+      this.memoryOperations.set(id, op);
+    }
+
+    if (this.db) {
+      try {
+        await this.db.run(
+          'UPDATE pending_operation SET retry_count = retry_count + 1, last_error = ?, next_attempt_at = ? WHERE id = ?',
+          [error, nextAttemptAt || null, id]
+        );
+        const res = await this.db.query('SELECT retry_count FROM pending_operation WHERE id = ?', [
+          id,
+        ]);
+        if (res.values?.[0]?.retry_count != null) {
+          count = res.values[0].retry_count;
+        }
+      } catch {}
+    }
+
+    return count;
+  }
+
+  async getConflictOperations(): Promise<PendingOperation[]> {
+    await this.initialize();
+
+    if (this.db) {
+      try {
+        const res = await this.db.query(
+          "SELECT * FROM pending_operation WHERE status IN ('CONFLICT_MANUAL_REVIEW', 'FAILED_PERMANENT', 'BLOCKED_BY_CONFLICT') ORDER BY id ASC"
+        );
+        if (res.values) {
+          return res.values.map(this.mapRowToPendingOp);
+        }
+      } catch {}
+    }
+
+    return Array.from(this.memoryOperations.values())
+      .filter(
+        (o) =>
+          o.status === 'CONFLICT_MANUAL_REVIEW' ||
+          o.status === 'FAILED_PERMANENT' ||
+          o.status === 'BLOCKED_BY_CONFLICT'
+      )
+      .sort((a, b) => a.id - b.id);
+  }
+
+  async requeuePendingOperation(id: number, newExpectedVersion: number): Promise<void> {
+    await this.initialize();
+
+    const op = this.memoryOperations.get(id);
+    if (op) {
+      try {
+        const payload = JSON.parse(op.payloadJson);
+        payload.expectedVersion = newExpectedVersion;
+        op.payloadJson = JSON.stringify(payload);
+      } catch {}
+      op.status = 'PENDING';
+      op.retryCount = 0;
+      op.lastError = null;
+      op.nextAttemptAt = null;
+      this.memoryOperations.set(id, op);
+    }
+
+    if (this.db) {
+      try {
+        const res = await this.db.query('SELECT payload_json FROM pending_operation WHERE id = ?', [
+          id,
+        ]);
+        if (res.values?.[0]?.payload_json) {
+          let payloadJson = res.values[0].payload_json;
+          try {
+            const payload = JSON.parse(payloadJson);
+            payload.expectedVersion = newExpectedVersion;
+            payloadJson = JSON.stringify(payload);
+          } catch {}
+          await this.db.run(
+            "UPDATE pending_operation SET status = 'PENDING', retry_count = 0, last_error = NULL, next_attempt_at = NULL, payload_json = ? WHERE id = ?",
+            [payloadJson, id]
+          );
+        }
+      } catch {}
+    }
   }
 
   async updatePendingOperationStatus(
@@ -386,6 +651,7 @@ export class DatabaseService {
       retryCount: row.retry_count,
       lastError: row.last_error,
       status: row.status,
+      nextAttemptAt: row.next_attempt_at,
     };
   }
 }

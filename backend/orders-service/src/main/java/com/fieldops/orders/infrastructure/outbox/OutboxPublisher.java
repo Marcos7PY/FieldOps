@@ -1,21 +1,15 @@
 package com.fieldops.orders.infrastructure.outbox;
 
-import com.fieldops.events.avro.WorkOrderEvent;
 import com.fieldops.orders.domain.model.OutboxEvent;
 import com.fieldops.orders.infrastructure.persistence.OutboxEventRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -23,21 +17,16 @@ import java.util.List;
 public class OutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
-    public static final String TOPIC = "fieldops.work-orders.events";
-    public static final String TRACE_ID_HEADER = "X-Trace-Id";
 
     private final OutboxEventRepository outboxEventRepository;
-    private final org.springframework.kafka.core.KafkaOperations<String, Object> kafkaOperations;
-    private final WorkOrderEventSerializer serializer;
+    private final OutboxEventDispatcher dispatcher;
 
     public OutboxPublisher(
             OutboxEventRepository outboxEventRepository,
-            org.springframework.kafka.core.KafkaOperations<String, Object> kafkaOperations,
-            WorkOrderEventSerializer serializer
+            OutboxEventDispatcher dispatcher
     ) {
         this.outboxEventRepository = outboxEventRepository;
-        this.kafkaOperations = kafkaOperations;
-        this.serializer = serializer;
+        this.dispatcher = dispatcher;
     }
 
     @Scheduled(fixedDelay = 2000)
@@ -52,42 +41,11 @@ public class OutboxPublisher {
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                publishSingleEvent(event);
+                dispatcher.dispatch(event);
             } catch (Exception e) {
                 log.error("Failed to publish outbox event id: {}, partition key will halt for ordering: {}",
                         event.getEventId(), e.getMessage(), e);
                 break;
-            }
-        }
-    }
-
-    @Transactional
-    public void publishSingleEvent(OutboxEvent event) {
-        WorkOrderEvent avroEvent = serializer.fromJson(event.getPayload());
-        String partitionKey = String.valueOf(event.getAggregateId());
-
-        String traceId = MDC.get("traceId");
-        boolean mdcGenerated = false;
-        if (traceId == null || traceId.isBlank()) {
-            traceId = java.util.UUID.randomUUID().toString();
-            MDC.put("traceId", traceId);
-            mdcGenerated = true;
-        }
-
-        ProducerRecord<String, Object> record = new ProducerRecord<>(TOPIC, partitionKey, avroEvent);
-
-        try {
-            record.headers().add(TRACE_ID_HEADER, traceId.getBytes(StandardCharsets.UTF_8));
-            kafkaOperations.send(record);
-
-            event.setPublishedAt(LocalDateTime.now());
-            outboxEventRepository.save(event);
-
-            log.info("Published outbox event {} (type={}, orderId={}) to topic {}",
-                    event.getEventId(), event.getEventType(), partitionKey, TOPIC);
-        } finally {
-            if (mdcGenerated) {
-                MDC.remove("traceId");
             }
         }
     }

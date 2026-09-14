@@ -1,0 +1,9 @@
+services:
+  auth-service:
+    ports: ["8081:8081"]
+  orders-service:
+    ports: ["8082:8082"]
+  notification-service:
+    ports: ["8083:8083"]
+  analytics-service:
+    ports: ["8084:8084"]

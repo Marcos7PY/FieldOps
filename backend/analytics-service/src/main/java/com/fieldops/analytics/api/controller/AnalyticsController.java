@@ -2,18 +2,25 @@ package com.fieldops.analytics.api.controller;
 
 import com.fieldops.analytics.api.dto.DailyMetricsResponse;
 import com.fieldops.analytics.api.dto.RebuildProjectionResponse;
+import com.fieldops.analytics.api.dto.RebuildStatusResponse;
 import com.fieldops.analytics.api.dto.TechnicianMetricsResponse;
 import com.fieldops.analytics.application.service.AnalyticsQueryService;
 import com.fieldops.analytics.application.service.ProjectionRebuildService;
+import com.fieldops.analytics.domain.exception.RebuildAlreadyInProgressException;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -53,5 +60,20 @@ public class AnalyticsController {
                 "Reconstrucción de la proyección iniciada en segundo plano",
                 LocalDateTime.now()
         ));
+    }
+
+    @GetMapping("/projections/rebuild/status")
+    @PreAuthorize("hasRole('ROLE_SUPERVISOR')")
+    public ResponseEntity<RebuildStatusResponse> rebuildStatus() {
+        return ResponseEntity.ok(rebuildService.getRebuildStatus());
+    }
+
+    @ExceptionHandler(RebuildAlreadyInProgressException.class)
+    public ProblemDetail handleRebuildAlreadyInProgress(RebuildAlreadyInProgressException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Rebuild Conflict");
+        problem.setType(URI.create("https://fieldops.com/errors/rebuild-in-progress"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
     }
 }

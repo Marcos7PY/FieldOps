@@ -26,6 +26,7 @@ import { NetworkService } from '../../../core/services/network.service';
 import { DatabaseService } from '../../../core/services/database.service';
 import { OfflineQueueService } from '../../../core/services/offline-queue.service';
 import {
+  alertCircleOutline,
   businessOutline,
   calendarOutline,
   chevronForwardOutline,
@@ -33,6 +34,7 @@ import {
   logOutOutline,
   refreshOutline,
   syncOutline,
+  warningOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -71,9 +73,11 @@ export class OrdersListPage implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly currentPage = signal(0);
   readonly isLastPage = signal(false);
+  readonly conflictCount = signal<number>(0);
 
   constructor() {
     addIcons({
+      alertCircleOutline,
       businessOutline,
       calendarOutline,
       chevronForwardOutline,
@@ -81,14 +85,28 @@ export class OrdersListPage implements OnInit {
       logOutOutline,
       refreshOutline,
       syncOutline,
+      warningOutline,
     });
   }
 
   ngOnInit(): void {
     this.loadOrders(0, false);
+    void this.loadConflictCount();
+  }
+
+  async loadConflictCount(): Promise<void> {
+    try {
+      const conflicts = await this.db.getConflictOperations();
+      this.conflictCount.set(conflicts.length);
+    } catch {}
+  }
+
+  goToConflicts(): void {
+    void this.router.navigate(['/sync/conflicts']);
   }
 
   async loadOrders(page: number, append: boolean, event?: CustomEvent): Promise<void> {
+    void this.loadConflictCount();
     if (!append) {
       this.loading.set(true);
       this.errorMessage.set(null);

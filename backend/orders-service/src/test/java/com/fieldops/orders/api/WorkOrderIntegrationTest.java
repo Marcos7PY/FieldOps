@@ -144,7 +144,7 @@ class WorkOrderIntegrationTest extends AbstractIntegrationTest {
                 "file",
                 "installation.jpg",
                 "image/jpeg",
-                new byte[]{10, 20, 30, 40}
+                new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16, 'J', 'F', 'I', 'F', 0, 1}
         );
 
         mockMvc.perform(multipart("/api/v1/work-orders/{id}/evidence", orderId)

@@ -26,7 +26,9 @@ export class AuthService {
   }
 
   getRefreshToken(): string | null {
-    return localStorage.getItem(AuthService.REFRESH_TOKEN_KEY);
+    // Use sessionStorage so the refresh token is cleared when the browser/tab is closed.
+    // This limits the session lifetime to the current browser session (F5-T02).
+    return sessionStorage.getItem(AuthService.REFRESH_TOKEN_KEY);
   }
 
   hasRole(role: string): boolean {
@@ -109,13 +111,13 @@ export class AuthService {
     this._accessToken.set(response.accessToken);
     this._currentUser.set(response.user);
     if (response.refreshToken) {
-      localStorage.setItem(AuthService.REFRESH_TOKEN_KEY, response.refreshToken);
+      sessionStorage.setItem(AuthService.REFRESH_TOKEN_KEY, response.refreshToken);
     }
   }
 
   clearSession(): void {
     this._accessToken.set(null);
     this._currentUser.set(null);
-    localStorage.removeItem(AuthService.REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(AuthService.REFRESH_TOKEN_KEY);
   }
 }

@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -41,7 +42,20 @@ public class SlidingWindowRateLimiterFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        String clientKey = resolveClientKey(exchange.getRequest());
+        return exchange.getPrincipal()
+                .map(p -> "user:" + p.getName())
+                .defaultIfEmpty("ip:" + resolveClientKey(exchange.getRequest()))
+                .flatMap(key -> applyLimit(key, exchange, chain));
+    }
+
+    private Mono<Void> applyLimit(String clientKey, ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Techo duro contra fuga de memoria / DoS
+        if (clientRequests.size() >= properties.getMaxTrackedClients() && !clientRequests.containsKey(clientKey)) {
+            ServerHttpResponse response = exchange.getResponse();
+            response.setStatusCode(HttpStatus.SERVICE_UNAVAILABLE);
+            return response.setComplete();
+        }
+
         long now = System.currentTimeMillis();
         long windowMs = properties.getWindowSeconds() * 1000L;
         int capacity = properties.getCapacity();
@@ -92,15 +106,37 @@ public class SlidingWindowRateLimiterFilter implements GlobalFilter, Ordered {
     }
 
     private String resolveClientKey(ServerHttpRequest request) {
-        String xForwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
+        String remoteIp = null;
+        InetSocketAddress remote = request.getRemoteAddress();
+        if (remote != null && remote.getAddress() != null) {
+            remoteIp = remote.getAddress().getHostAddress();
         }
-        InetSocketAddress remoteAddress = request.getRemoteAddress();
-        if (remoteAddress != null && remoteAddress.getAddress() != null) {
-            return remoteAddress.getAddress().getHostAddress();
+
+        if (remoteIp != null && properties.getTrustedProxies().contains(remoteIp)) {
+            String xff = request.getHeaders().getFirst("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                return xff.split(",")[0].trim();
+            }
         }
-        return "anonymous";
+        return remoteIp != null ? remoteIp : "anonymous";
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    public void evictIdleClients() {
+        long cutoff = System.currentTimeMillis() - properties.getWindowSeconds() * 1000L;
+        clientRequests.entrySet().removeIf(entry -> {
+            Deque<Long> timestamps = entry.getValue();
+            synchronized (timestamps) {
+                while (!timestamps.isEmpty() && timestamps.peekFirst() <= cutoff) {
+                    timestamps.pollFirst();
+                }
+                return timestamps.isEmpty();
+            }
+        });
+    }
+
+    public Map<String, Deque<Long>> getClientRequests() {
+        return clientRequests;
     }
 
     public void reset() {

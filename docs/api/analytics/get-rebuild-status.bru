@@ -1,0 +1,15 @@
+meta {
+  name: Consultar Estado de Reconstrucción
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/analytics/projections/rebuild/status
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,4 +1,4 @@
-﻿image: maven:3.9-eclipse-temurin-21
+image: maven:3.9-eclipse-temurin-21
 
 definitions:
   caches:
@@ -10,7 +10,7 @@ definitions:
       memory: 3072
   steps:
     - step: &backend-build
-        name: Backend build and test
+        name: Backend build, test and analyse
         caches:
           - maven
         services:
@@ -18,18 +18,12 @@ definitions:
         script:
           - cd backend
           - mvn -B clean verify
+          - mvn -B sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN
         artifacts:
           - "**/target/surefire-reports/**"
           - "**/target/site/jacoco/**"
-    - step: &sonar-analysis
-        name: SonarQube quality analysis
-        caches:
-          - maven
-        script:
-          - cd backend
-          - mvn -B sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN
-    - step: &frontend-build
-        name: Frontend build and test
+    - step: &frontend-web-build
+        name: Web-admin build and test
         image: node:20
         caches:
           - npmweb
@@ -38,19 +32,28 @@ definitions:
           - npm ci
           - npm run lint
           - npm run build -- --configuration production
-          - npm run test -- --watch=false --browsers=ChromeHeadless
+          - npm run test:ci
+    - step: &frontend-mobile-build
+        name: Mobile-technician build and test
+        image: node:20
+        caches:
+          - npmmobile
+        script:
+          - cd frontend/mobile-technician
+          - npm ci
+          - npm run build -- --configuration production
+          - npm run test:ci
 
 pipelines:
   pull-requests:
     '**':
       - parallel:
           - step: *backend-build
-          - step: *frontend-build
-      - step: *sonar-analysis
+          - step: *frontend-web-build
+          - step: *frontend-mobile-build
   branches:
     develop:
       - step: *backend-build
-      - step: *sonar-analysis
       - step:
           name: Build container images
           services:
@@ -61,3 +64,31 @@ pipelines:
               for svc in api-gateway auth-service orders-service notification-service analytics-service; do
                 docker build -t "fieldops/$svc:$TAG" "backend/$svc"
               done
+    main:
+      - step: *backend-build
+      - parallel:
+          - step: *frontend-web-build
+          - step: *frontend-mobile-build
+      - step:
+          name: Build and push production images
+          services:
+            - docker
+          script:
+            - export TAG=${BITBUCKET_TAG:-$BITBUCKET_COMMIT_SHORT}
+            - |
+              for svc in api-gateway auth-service orders-service notification-service analytics-service; do
+                docker build -t "$REGISTRY/fieldops/$svc:$TAG" -t "$REGISTRY/fieldops/$svc:latest" "backend/$svc"
+                docker push "$REGISTRY/fieldops/$svc:$TAG"
+                docker push "$REGISTRY/fieldops/$svc:latest"
+              done
+  custom:
+    security-scan:
+      - step:
+          name: Dependency vulnerability scan
+          caches:
+            - maven
+          script:
+            - cd backend
+            - mvn -B dependency-check:check
+          artifacts:
+            - "**/target/dependency-check-report.html"

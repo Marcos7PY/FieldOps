@@ -13,6 +13,8 @@ spring:
       outbox_filter: ""
       performance_filter: ""
       include_clause: ""
+      duration_metrics_filter: ""
+      duration_include_clause: ""
   kafka:
     bootstrap-servers: localhost:9092
     properties:

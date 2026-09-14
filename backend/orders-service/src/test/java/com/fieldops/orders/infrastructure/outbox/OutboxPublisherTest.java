@@ -6,6 +6,7 @@ import com.fieldops.orders.domain.model.OutboxEvent;
 import com.fieldops.orders.infrastructure.persistence.OutboxEventRepository;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,11 +38,13 @@ class OutboxPublisherTest {
     private org.springframework.kafka.core.KafkaOperations<String, Object> kafkaOperations;
 
     private final WorkOrderEventSerializer serializer = new WorkOrderEventSerializer();
+    private OutboxEventDispatcher dispatcher;
     private OutboxPublisher publisher;
 
     @BeforeEach
     void setUp() {
-        publisher = new OutboxPublisher(outboxEventRepository, kafkaOperations, serializer);
+        dispatcher = new OutboxEventDispatcher(outboxEventRepository, kafkaOperations, serializer);
+        publisher = new OutboxPublisher(outboxEventRepository, dispatcher);
     }
 
     private OutboxEvent createSampleOutboxEvent(Long id, Long aggregateId, String eventType) {
@@ -62,6 +65,7 @@ class OutboxPublisherTest {
     }
 
     @Test
+    @DisplayName("F3-T01: Envío exitoso marca publishedAt != null y llama a save")
     void shouldPublishPendingEventsSuccessfully() {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
         OutboxEvent e2 = createSampleOutboxEvent(2L, 102L, "ORDER_ASSIGNED");
@@ -82,7 +86,7 @@ class OutboxPublisherTest {
         verify(kafkaOperations, times(2)).send(recordCaptor.capture());
 
         List<ProducerRecord<String, Object>> capturedRecords = recordCaptor.getAllValues();
-        assertThat(capturedRecords.get(0).topic()).isEqualTo(OutboxPublisher.TOPIC);
+        assertThat(capturedRecords.get(0).topic()).isEqualTo(OutboxEventDispatcher.TOPIC);
         assertThat(capturedRecords.get(0).key()).isEqualTo("101");
         assertThat(capturedRecords.get(0).headers().lastHeader("X-Trace-Id")).isNotNull();
         assertThat(new String(capturedRecords.get(0).headers().lastHeader("X-Trace-Id").value()))
@@ -96,6 +100,7 @@ class OutboxPublisherTest {
     }
 
     @Test
+    @DisplayName("F3-T01: Mock de send que devuelve future fallido -> publishedAt == null y detiene el lote")
     void shouldHaltBatchWhenKafkaSendFailsToPreserveOrdering() {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 201L, "ORDER_CREATED");
         OutboxEvent e2 = createSampleOutboxEvent(2L, 201L, "ORDER_ASSIGNED");
@@ -103,11 +108,11 @@ class OutboxPublisherTest {
         when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(e1, e2));
         when(kafkaOperations.send(any(ProducerRecord.class)))
-                .thenThrow(new RuntimeException("Kafka broker unavailable"));
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Broker rejected record")));
 
         publisher.publishPendingEvents();
 
-        // Only first event was attempted; second was halted to preserve ordering
+        // Solo se intentó el primer evento; el lote se interrumpe para preservar el orden
         verify(kafkaOperations, times(1)).send(any(ProducerRecord.class));
         assertThat(e1.getPublishedAt()).isNull();
         assertThat(e2.getPublishedAt()).isNull();

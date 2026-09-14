@@ -1,0 +1,168 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="warning">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/sync/conflicts" text="Atrás"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Resolución de Conflicto</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  @if (loading()) {
+  <div class="center-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p class="loading-text">Cargando comparativa de conflicto...</p>
+  </div>
+  } @else if (errorMessage()) {
+  <div class="center-container">
+    <ion-icon name="alert-circle-outline" class="error-icon"></ion-icon>
+    <p class="error-text">{{ errorMessage() }}</p>
+    <ion-button fill="outline" (click)="keepForLater()">Volver a la lista</ion-button>
+  </div>
+  } @else if (operation(); as op) {
+  <div class="conflict-container">
+    <div class="alert-banner">
+      <ion-icon name="warning-outline"></ion-icon>
+      <div class="banner-text">
+        <strong>Conflicto de concurrencia detectado</strong>
+        <p>
+          {{ op.lastError || 'El recurso en el servidor fue modificado de forma concurrente.' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Side-by-side comparison grid -->
+    <div class="comparison-grid">
+      <!-- Local Column -->
+      <ion-card class="comparison-card local-card">
+        <ion-card-header>
+          <ion-card-subtitle>Dispositivo Móvil</ion-card-subtitle>
+          <ion-card-title>Tu versión local</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="prop-group">
+            <span class="prop-label">Tipo de Operación:</span>
+            <span class="prop-value">{{ op.operationType }}</span>
+          </div>
+
+          @if (op.operationType === 'STATUS_CHANGE') {
+          <div class="prop-group">
+            <span class="prop-label">Estado deseado:</span>
+            <ion-badge color="primary">{{ parsedPayload()?.newStatus }}</ion-badge>
+          </div>
+          <div class="prop-group">
+            <span class="prop-label">Notas registradas:</span>
+            <p class="notes-box">{{ parsedPayload()?.notes || 'Sin notas' }}</p>
+          </div>
+          <div class="prop-group">
+            <span class="prop-label">Versión esperada:</span>
+            <span class="prop-value">v{{ parsedPayload()?.expectedVersion }}</span>
+          </div>
+          } @else if (op.operationType === 'UPLOAD_EVIDENCE') {
+          <div class="prop-group">
+            <span class="prop-label">Archivo:</span>
+            <span class="prop-value">{{ parsedPayload()?.filename }}</span>
+          </div>
+          <div class="prop-group">
+            <span class="prop-label">MIME Type:</span>
+            <span class="prop-value">{{ parsedPayload()?.contentType }}</span>
+          </div>
+          }
+
+          <div class="prop-group">
+            <span class="prop-label">Hora de registro:</span>
+            <span class="prop-value">{{ op.createdAt | date:'medium' }}</span>
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Server Column -->
+      <ion-card class="comparison-card server-card">
+        <ion-card-header>
+          <ion-card-subtitle>Servidor Central</ion-card-subtitle>
+          <ion-card-title>Versión del servidor</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          @if (serverOrder(); as server) {
+          <div class="prop-group">
+            <span class="prop-label">Código:</span>
+            <span class="prop-value">{{ server.code }}</span>
+          </div>
+          <div class="prop-group">
+            <span class="prop-label">Estado actual:</span>
+            <ion-badge color="success">{{ server.status }}</ion-badge>
+          </div>
+          <div class="prop-group">
+            <span class="prop-label">Versión actual:</span>
+            <span class="prop-value">v{{ server.version }}</span>
+          </div>
+          @if (server.scheduledAt) {
+          <div class="prop-group">
+            <span class="prop-label">Programada:</span>
+            <span class="prop-value">{{ server.scheduledAt | date:'short' }}</span>
+          </div>
+          } @if (server.startedAt) {
+          <div class="prop-group">
+            <span class="prop-label">Iniciada:</span>
+            <span class="prop-value">{{ server.startedAt | date:'short' }}</span>
+          </div>
+          } } @else {
+          <p class="warning-text">
+            No se pudo contactar al servidor. Mostrando última copia conocida.
+          </p>
+          }
+        </ion-card-content>
+      </ion-card>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="actions-card">
+      <h4 class="actions-title">Acciones disponibles</h4>
+
+      @let validation = canRetryWithServer(); @if (!validation.allowed) {
+      <div class="validation-warning">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>{{ validation.reason }}</span>
+      </div>
+      }
+
+      <ion-button
+        expand="block"
+        color="primary"
+        class="action-button"
+        [disabled]="resolving() || !validation.allowed"
+        (click)="retryWithCurrentVersion()"
+      >
+        @if (resolving()) {
+        <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+        <ion-icon slot="start" name="refresh-outline"></ion-icon>
+        Reintentar con la versión actual }
+      </ion-button>
+
+      <ion-button
+        expand="block"
+        color="danger"
+        fill="outline"
+        class="action-button"
+        [disabled]="resolving()"
+        (click)="discardChange()"
+      >
+        <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+        Descartar mi cambio local
+      </ion-button>
+
+      <ion-button
+        expand="block"
+        fill="clear"
+        color="medium"
+        class="action-button"
+        [disabled]="resolving()"
+        (click)="keepForLater()"
+      >
+        Conservar para revisar después
+      </ion-button>
+    </div>
+  </div>
+  }
+</ion-content>

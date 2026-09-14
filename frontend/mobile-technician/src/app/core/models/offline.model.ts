@@ -23,9 +23,23 @@ export interface LocalWorkOrder {
   updatedAt: string;
 }
 
+export type StorageMode = 'sqlite' | 'memory' | 'failed';
+
+export class StorageUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'StorageUnavailableError';
+  }
+}
+
 export type OperationType = 'STATUS_CHANGE' | 'UPLOAD_EVIDENCE';
 export type PendingOperationStatus =
-  'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CONFLICT_MANUAL_REVIEW';
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CONFLICT_MANUAL_REVIEW'
+  | 'BLOCKED_BY_CONFLICT'
+  | 'FAILED_PERMANENT';
 
 export interface PendingOperation {
   id: number;
@@ -36,4 +50,5 @@ export interface PendingOperation {
   retryCount: number;
   lastError?: string | null;
   status: PendingOperationStatus;
+  nextAttemptAt?: string | null;
 }

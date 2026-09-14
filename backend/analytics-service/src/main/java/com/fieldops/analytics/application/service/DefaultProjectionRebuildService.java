@@ -1,22 +1,22 @@
 package com.fieldops.analytics.application.service;
 
+import com.fieldops.analytics.api.dto.RebuildStatusResponse;
+import com.fieldops.analytics.domain.exception.RebuildAlreadyInProgressException;
 import com.fieldops.analytics.domain.model.ProjectionCheckpoint;
 import com.fieldops.analytics.infrastructure.config.KafkaConsumerConfig;
 import com.fieldops.analytics.infrastructure.kafka.KafkaOffsetResetter;
-import com.fieldops.analytics.infrastructure.persistence.ProcessedEventRepository;
 import com.fieldops.analytics.infrastructure.persistence.ProjectionCheckpointRepository;
-import com.fieldops.analytics.infrastructure.persistence.WorkOrderDailyMetricRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class DefaultProjectionRebuildService implements ProjectionRebuildService {
@@ -26,29 +26,33 @@ public class DefaultProjectionRebuildService implements ProjectionRebuildService
 
     private final ListenerContainerRegistry listenerEndpointRegistry;
     private final KafkaOffsetResetter kafkaOffsetResetter;
-    private final WorkOrderDailyMetricRepository metricRepository;
-    private final ProcessedEventRepository processedEventRepository;
+    private final ProjectionResetOperations resetOperations;
     private final ProjectionCheckpointRepository checkpointRepository;
-    private final TaskExecutor taskExecutor;
+
+    private final AtomicBoolean rebuildInProgress = new AtomicBoolean(false);
+    private final ExecutorService executor =
+            Executors.newSingleThreadExecutor(r -> new Thread(r, "rebuild-projection"));
 
     public DefaultProjectionRebuildService(
             ListenerContainerRegistry listenerEndpointRegistry,
             KafkaOffsetResetter kafkaOffsetResetter,
-            WorkOrderDailyMetricRepository metricRepository,
-            ProcessedEventRepository processedEventRepository,
+            ProjectionResetOperations resetOperations,
             ProjectionCheckpointRepository checkpointRepository
     ) {
         this.listenerEndpointRegistry = listenerEndpointRegistry;
         this.kafkaOffsetResetter = kafkaOffsetResetter;
-        this.metricRepository = metricRepository;
-        this.processedEventRepository = processedEventRepository;
+        this.resetOperations = resetOperations;
         this.checkpointRepository = checkpointRepository;
-        this.taskExecutor = new SimpleAsyncTaskExecutor("rebuild-projection-");
     }
 
     @Override
     public CompletableFuture<Void> rebuildProjectionAsync() {
-        return CompletableFuture.runAsync(this::executeRebuild, taskExecutor);
+        if (!rebuildInProgress.compareAndSet(false, true)) {
+            throw new RebuildAlreadyInProgressException(
+                    "Ya hay una reconstrucción de proyección en curso");
+        }
+        return CompletableFuture.runAsync(this::executeRebuild, executor)
+                .whenComplete((v, t) -> rebuildInProgress.set(false));
     }
 
     @Override
@@ -62,12 +66,12 @@ public class DefaultProjectionRebuildService implements ProjectionRebuildService
         }
 
         try {
-            truncateReadModelAndClearProcessedEvents();
+            resetOperations.truncateReadModelAndClearProcessedEvents();
 
             kafkaOffsetResetter.resetConsumerGroupToEarliest(KafkaConsumerConfig.CONSUMER_GROUP, TOPIC);
             log.info("Reset consumer group offset to earliest for topic {}", TOPIC);
 
-            recordRebuildTimestamp();
+            resetOperations.recordRebuildTimestamp();
             log.info("Projection rebuild setup complete for {}", KafkaConsumerConfig.CONSUMER_GROUP);
         } catch (Exception e) {
             log.error("Error during projection rebuild: {}", e.getMessage(), e);
@@ -80,17 +84,12 @@ public class DefaultProjectionRebuildService implements ProjectionRebuildService
         }
     }
 
-    @Transactional
-    public void truncateReadModelAndClearProcessedEvents() {
-        metricRepository.truncateAll();
-        processedEventRepository.deleteByConsumerGroup(KafkaConsumerConfig.CONSUMER_GROUP);
-    }
-
-    @Transactional
-    public void recordRebuildTimestamp() {
-        ProjectionCheckpoint checkpoint = checkpointRepository.findById(KafkaConsumerConfig.CONSUMER_GROUP)
-                .orElse(new ProjectionCheckpoint(KafkaConsumerConfig.CONSUMER_GROUP, null, null, 0L));
-        checkpoint.setRebuiltAt(LocalDateTime.now());
-        checkpointRepository.save(checkpoint);
+    @Override
+    public RebuildStatusResponse getRebuildStatus() {
+        boolean inProgress = rebuildInProgress.get();
+        LocalDateTime lastRebuiltAt = checkpointRepository.findById(KafkaConsumerConfig.CONSUMER_GROUP)
+                .map(ProjectionCheckpoint::getRebuiltAt)
+                .orElse(null);
+        return new RebuildStatusResponse(inProgress, lastRebuiltAt);
     }
 }

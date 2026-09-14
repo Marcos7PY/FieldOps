@@ -1,6 +1,25 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { User } from '../models/auth.model';
+
+// On native (Android/iOS) we use capacitor-secure-storage-plugin which maps to
+// EncryptedSharedPreferences + Keystore on Android and Keychain on iOS.
+// On web/test environments it falls back to @capacitor/preferences (localStorage)
+// to keep the test harness functional without native APIs.
+let SecureStoragePlugin:
+  typeof import('capacitor-secure-storage-plugin').SecureStoragePlugin | null = null;
+
+if (Capacitor.isNativePlatform()) {
+  // Loaded lazily so that web tests don't fail on missing native implementation
+  import('capacitor-secure-storage-plugin')
+    .then((mod) => {
+      SecureStoragePlugin = mod.SecureStoragePlugin;
+    })
+    .catch(() => {
+      SecureStoragePlugin = null;
+    });
+}
 
 @Injectable({
   providedIn: 'root',
@@ -10,43 +29,87 @@ export class AuthStorageService {
   private static readonly KEY_REFRESH_TOKEN = 'fieldops_mobile_refresh_token';
   private static readonly KEY_USER = 'fieldops_mobile_user';
 
+  // ---------- Access Token ----------
+
   async getAccessToken(): Promise<string | null> {
-    const { value } = await Preferences.get({ key: AuthStorageService.KEY_ACCESS_TOKEN });
-    return value;
+    return this.secureGet(AuthStorageService.KEY_ACCESS_TOKEN);
   }
 
   async setAccessToken(token: string): Promise<void> {
-    await Preferences.set({ key: AuthStorageService.KEY_ACCESS_TOKEN, value: token });
+    await this.secureSet(AuthStorageService.KEY_ACCESS_TOKEN, token);
   }
 
+  // ---------- Refresh Token ----------
+
   async getRefreshToken(): Promise<string | null> {
-    const { value } = await Preferences.get({ key: AuthStorageService.KEY_REFRESH_TOKEN });
-    return value;
+    return this.secureGet(AuthStorageService.KEY_REFRESH_TOKEN);
   }
 
   async setRefreshToken(token: string): Promise<void> {
-    await Preferences.set({ key: AuthStorageService.KEY_REFRESH_TOKEN, value: token });
+    await this.secureSet(AuthStorageService.KEY_REFRESH_TOKEN, token);
   }
 
+  // ---------- User ----------
+
   async getUser(): Promise<User | null> {
-    const { value } = await Preferences.get({ key: AuthStorageService.KEY_USER });
-    if (!value) {
-      return null;
-    }
+    const raw = await this.secureGet(AuthStorageService.KEY_USER);
+    if (!raw) return null;
     try {
-      return JSON.parse(value) as User;
+      return JSON.parse(raw) as User;
     } catch {
       return null;
     }
   }
 
   async setUser(user: User): Promise<void> {
-    await Preferences.set({ key: AuthStorageService.KEY_USER, value: JSON.stringify(user) });
+    await this.secureSet(AuthStorageService.KEY_USER, JSON.stringify(user));
   }
 
+  // ---------- Clear ----------
+
   async clearSession(): Promise<void> {
-    await Preferences.remove({ key: AuthStorageService.KEY_ACCESS_TOKEN });
-    await Preferences.remove({ key: AuthStorageService.KEY_REFRESH_TOKEN });
-    await Preferences.remove({ key: AuthStorageService.KEY_USER });
+    await this.secureRemove(AuthStorageService.KEY_ACCESS_TOKEN);
+    await this.secureRemove(AuthStorageService.KEY_REFRESH_TOKEN);
+    await this.secureRemove(AuthStorageService.KEY_USER);
+  }
+
+  // ---------- Private helpers ----------
+
+  private async secureGet(key: string): Promise<string | null> {
+    if (SecureStoragePlugin) {
+      try {
+        const result = await SecureStoragePlugin.get({ key });
+        return result.value ?? null;
+      } catch {
+        return null;
+      }
+    }
+    // Fallback: @capacitor/preferences (web / test)
+    const { value } = await Preferences.get({ key });
+    return value;
+  }
+
+  private async secureSet(key: string, value: string): Promise<void> {
+    if (SecureStoragePlugin) {
+      try {
+        await SecureStoragePlugin.set({ key, value });
+        return;
+      } catch {
+        // On error fall through to Preferences
+      }
+    }
+    await Preferences.set({ key, value });
+  }
+
+  private async secureRemove(key: string): Promise<void> {
+    if (SecureStoragePlugin) {
+      try {
+        await SecureStoragePlugin.remove({ key });
+      } catch {
+        // Ignore if key did not exist
+      }
+    }
+    // Always also remove from Preferences in case it was written there before
+    await Preferences.remove({ key });
   }
 }

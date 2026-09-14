@@ -51,4 +51,26 @@ class WorkOrderDailyMetricRepositoryTest {
         assertThat(list2.get(0).getOrderCount()).isEqualTo(2);
         assertThat(list2.get(0).getAvgDurationMinutes()).isEqualByComparingTo(BigDecimal.valueOf(90.0));
     }
+
+    @Test
+    void shouldCalculateWeightedAverageCorrectlyAfterThreeEvents() {
+        LocalDate date = LocalDate.of(2026, 9, 13);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 3 consecutive events with durations 10, 20, and 60 minutes
+        // Expected weighted average: (10 + 20 + 60) / 3 = 30.00
+        metricRepository.upsertMetric(date, 99L, "COMPLETED", 1, BigDecimal.valueOf(10.0), now);
+        entityManager.clear();
+
+        metricRepository.upsertMetric(date, 99L, "COMPLETED", 1, BigDecimal.valueOf(20.0), now.plusMinutes(1));
+        entityManager.clear();
+
+        metricRepository.upsertMetric(date, 99L, "COMPLETED", 1, BigDecimal.valueOf(60.0), now.plusMinutes(2));
+        entityManager.clear();
+
+        List<WorkOrderDailyMetric> list = metricRepository.findByDateRange(date, date);
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).getOrderCount()).isEqualTo(3);
+        assertThat(list.get(0).getAvgDurationMinutes()).isEqualByComparingTo(new BigDecimal("30.00"));
+    }
 }

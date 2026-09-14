@@ -20,6 +20,20 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'sync/conflicts',
+    loadComponent: () =>
+      import('./features/sync/conflict-list/conflict-list.page').then((m) => m.ConflictListPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'sync/conflicts/:id',
+    loadComponent: () =>
+      import('./features/sync/conflict-detail/conflict-detail.page').then(
+        (m) => m.ConflictDetailPage
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'home',
     redirectTo: 'orders',
     pathMatch: 'full',

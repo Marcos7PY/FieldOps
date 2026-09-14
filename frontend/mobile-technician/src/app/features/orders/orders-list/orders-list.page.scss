@@ -131,3 +131,24 @@
     font-size: 1.2rem;
   }
 }
+
+.storage-degraded-banner {
+  background: #fffbe8;
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ffe58f;
+
+  ion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+}
+
+.toolbar-badge {
+  margin-left: 2px;
+  font-size: 0.75rem;
+}

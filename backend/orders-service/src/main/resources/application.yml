@@ -6,10 +6,14 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=fieldops_orders;encrypt=true;trustServerCertificate=true}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:FieldOps2026!Dev}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     hibernate:
@@ -25,6 +29,8 @@ spring:
       outbox_filter: "WHERE published_at IS NULL"
       performance_filter: "WHERE status <> 'CANCELLED'"
       include_clause: "INCLUDE (assigned_technician_id, completed_at)"
+      duration_metrics_filter: "WHERE status = 'COMPLETED'"
+      duration_include_clause: "INCLUDE (started_at, completed_at)"
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:

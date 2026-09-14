@@ -11,6 +11,7 @@ import com.fieldops.orders.application.dto.WorkOrderResponse;
 import com.fieldops.orders.application.dto.WorkOrderSummaryResponse;
 import com.fieldops.orders.application.service.EvidenceService;
 import com.fieldops.orders.application.service.WorkOrderService;
+import com.fieldops.orders.domain.exception.AccessDeniedException;
 import com.fieldops.orders.domain.exception.VersionConflictException;
 import com.fieldops.orders.domain.model.OrderStatus;
 import com.fieldops.orders.infrastructure.security.CurrentUserProvider;
@@ -57,13 +58,27 @@ public class WorkOrderController {
         this.currentUserProvider = currentUserProvider;
     }
 
+    private Long requireCurrentUserId() {
+        return currentUserProvider.getCurrentUserId()
+                .orElseThrow(() -> new AccessDeniedException(
+                        "El token no contiene un identificador de usuario válido"));
+    }
+
+    private Long requireVersion(String ifMatch) {
+        Long v = parseVersion(ifMatch);
+        if (v == null) {
+            throw new VersionConflictException(
+                    "La cabecera If-Match debe contener una versión numérica válida");
+        }
+        return v;
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ROLE_SUPERVISOR')")
     public ResponseEntity<WorkOrderResponse> createWorkOrder(
-            @Valid @RequestBody CreateWorkOrderRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId
+            @Valid @RequestBody CreateWorkOrderRequest request
     ) {
-        Long resolvedUserId = currentUserProvider.getCurrentUserId().orElse(userId != null ? userId : 1L);
+        Long resolvedUserId = requireCurrentUserId();
         WorkOrderResponse response = workOrderService.createWorkOrder(request, resolvedUserId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -83,14 +98,12 @@ public class WorkOrderController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size,
-            @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId,
-            @RequestHeader(value = "X-User-Role", required = false) String role
+            @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort
     ) {
         int boundedSize = Math.min(Math.max(1, size), 100);
         Sort sortOrder = parseSort(sort);
         Pageable pageable = PageRequest.of(page, boundedSize, sortOrder);
-        Long resolvedUserId = currentUserProvider.getCurrentUserId().orElse(userId != null ? userId : 1L);
+        Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
 
         PageResponse<WorkOrderSummaryResponse> response = workOrderService.findWorkOrders(
@@ -108,11 +121,9 @@ public class WorkOrderController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_SUPERVISOR', 'ROLE_TECHNICIAN')")
     public ResponseEntity<WorkOrderResponse> getWorkOrderById(
-            @PathVariable("id") Long id,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId,
-            @RequestHeader(value = "X-User-Role", required = false) String role
+            @PathVariable("id") Long id
     ) {
-        Long resolvedUserId = currentUserProvider.getCurrentUserId().orElse(userId != null ? userId : 1L);
+        Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
         WorkOrderResponse response = workOrderService.getWorkOrderById(id, resolvedUserId, isSupervisor);
         return ResponseEntity.ok()
@@ -125,11 +136,10 @@ public class WorkOrderController {
     public ResponseEntity<WorkOrderResponse> assignWorkOrder(
             @PathVariable("id") Long id,
             @Valid @RequestBody AssignWorkOrderRequest request,
-            @RequestHeader(value = "If-Match", required = false) String ifMatch,
-            @RequestHeader(value = "X-User-Id", required = false) Long supervisorId
+            @RequestHeader(value = "If-Match") String ifMatch
     ) {
-        Long expectedVersion = parseVersion(ifMatch);
-        Long resolvedSupervisorId = currentUserProvider.getCurrentUserId().orElse(supervisorId != null ? supervisorId : 1L);
+        Long expectedVersion = requireVersion(ifMatch);
+        Long resolvedSupervisorId = requireCurrentUserId();
         WorkOrderResponse response = workOrderService.assignWorkOrder(id, request, resolvedSupervisorId, expectedVersion);
         return ResponseEntity.ok()
                 .eTag("\"" + response.version() + "\"")
@@ -141,15 +151,10 @@ public class WorkOrderController {
     public ResponseEntity<WorkOrderResponse> changeStatus(
             @PathVariable("id") Long id,
             @Valid @RequestBody ChangeStatusRequest request,
-            @RequestHeader(value = "If-Match") String ifMatch,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId,
-            @RequestHeader(value = "X-User-Role", required = false) String role
+            @RequestHeader(value = "If-Match") String ifMatch
     ) {
-        Long expectedVersion = parseVersion(ifMatch);
-        if (expectedVersion == null) {
-            throw new VersionConflictException("If-Match header with numeric version is required");
-        }
-        Long resolvedUserId = currentUserProvider.getCurrentUserId().orElse(userId != null ? userId : 1L);
+        Long expectedVersion = requireVersion(ifMatch);
+        Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
         WorkOrderResponse response = workOrderService.changeStatus(id, request, resolvedUserId, isSupervisor, expectedVersion);
         return ResponseEntity.ok()
@@ -162,10 +167,9 @@ public class WorkOrderController {
     public ResponseEntity<EvidenceResponse> uploadEvidence(
             @PathVariable("id") Long id,
             @RequestPart("file") MultipartFile file,
-            @RequestPart(value = "metadata", required = false) EvidenceMetadata metadata,
-            @RequestHeader(value = "X-User-Id", required = false) Long technicianId
+            @RequestPart(value = "metadata", required = false) EvidenceMetadata metadata
     ) {
-        Long resolvedTechnicianId = currentUserProvider.getCurrentUserId().orElse(technicianId != null ? technicianId : 1L);
+        Long resolvedTechnicianId = requireCurrentUserId();
         EvidenceResponse response = evidenceService.uploadEvidence(id, file, metadata, resolvedTechnicianId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{evidenceId}")
@@ -177,11 +181,9 @@ public class WorkOrderController {
     @GetMapping("/{id}/evidence")
     @PreAuthorize("hasAnyRole('ROLE_SUPERVISOR', 'ROLE_TECHNICIAN')")
     public ResponseEntity<List<EvidenceResponse>> getEvidences(
-            @PathVariable("id") Long id,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId,
-            @RequestHeader(value = "X-User-Role", required = false) String role
+            @PathVariable("id") Long id
     ) {
-        Long resolvedUserId = currentUserProvider.getCurrentUserId().orElse(userId != null ? userId : 1L);
+        Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
         return ResponseEntity.ok(evidenceService.getEvidences(id, resolvedUserId, isSupervisor));
     }

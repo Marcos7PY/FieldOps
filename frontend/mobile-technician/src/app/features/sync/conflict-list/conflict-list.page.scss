@@ -1,0 +1,94 @@
+.center-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 64px;
+    color: var(--ion-color-medium);
+    margin-bottom: 16px;
+  }
+
+  .empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    margin: 0 0 8px 0;
+  }
+
+  .empty-subtitle {
+    font-size: 0.95rem;
+    color: var(--ion-color-medium);
+    margin: 0;
+    max-width: 320px;
+  }
+}
+
+.conflicts-list {
+  background: transparent;
+  padding: 0;
+
+  .conflict-item {
+    --background: var(--ion-card-background, #fff);
+    --border-radius: 12px;
+    --padding-start: 16px;
+    --padding-end: 12px;
+    --padding-top: 14px;
+    --padding-bottom: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    .conflict-card-content {
+      width: 100%;
+
+      .conflict-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+
+        .order-id-label {
+          font-weight: 700;
+          font-size: 1rem;
+          color: var(--ion-color-primary);
+        }
+      }
+
+      .operation-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0 0 6px 0;
+        color: var(--ion-color-dark);
+      }
+
+      .error-detail {
+        font-size: 0.85rem;
+        color: var(--ion-color-danger);
+        margin: 4px 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        ion-icon {
+          font-size: 1rem;
+          flex-shrink: 0;
+        }
+      }
+
+      .meta-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: var(--ion-color-medium);
+      }
+    }
+
+    .chevron-icon {
+      color: var(--ion-color-medium);
+      font-size: 1.2rem;
+    }
+  }
+}

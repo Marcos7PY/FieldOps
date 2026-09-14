@@ -10,14 +10,17 @@ import com.fieldops.orders.domain.model.WorkOrderEvidence;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderEvidenceRepository;
 import com.fieldops.orders.infrastructure.persistence.WorkOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -25,10 +28,14 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EvidenceServiceTest {
+
+    private static final byte[] VALID_JPEG = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16, 'J', 'F', 'I', 'F', 0, 1};
+    private static final byte[] VALID_PNG = new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 13};
 
     @Mock
     private WorkOrderRepository workOrderRepository;
@@ -53,6 +60,7 @@ class EvidenceServiceTest {
     }
 
     @Test
+    @DisplayName("Guarda evidencia válida con tipo JPEG detectado")
     void uploadValidEvidenceSavesSuccessfully() {
         WorkOrder order = createTestOrder(1L, OrderStatus.IN_PROGRESS, 50L);
         when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
@@ -67,7 +75,7 @@ class EvidenceServiceTest {
                 "file",
                 "photo.jpg",
                 "image/jpeg",
-                new byte[]{1, 2, 3, 4}
+                VALID_JPEG
         );
 
         EvidenceMetadata metadata = new EvidenceMetadata(
@@ -86,20 +94,77 @@ class EvidenceServiceTest {
     }
 
     @Test
-    void uploadInvalidContentTypeThrowsException() {
+    @DisplayName("F2-T09: Subir un SVG con Content-Type image/png lanza BusinessRuleViolationException")
+    void uploadSvgWithPngContentTypeThrowsException() {
         WorkOrder order = createTestOrder(1L, OrderStatus.IN_PROGRESS, 50L);
         when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
-                "document.pdf",
-                "application/pdf",
-                new byte[]{1, 2, 3, 4}
+                "vector.svg",
+                "image/png",
+                "<svg xmlns='http://www.w3.org/2000/svg'></svg>".getBytes(StandardCharsets.UTF_8)
         );
 
         assertThatThrownBy(() -> service.uploadEvidence(1L, file, null, 50L))
                 .isInstanceOf(BusinessRuleViolationException.class)
-                .hasMessageContaining("Invalid file type");
+                .hasMessageContaining("no corresponde a una imagen JPEG, PNG o WEBP");
+    }
+
+    @Test
+    @DisplayName("F2-T09: Subir un PNG válido con nombre evil.html se guarda con extensión .png")
+    void uploadPngWithEvilHtmlNameStoresWithPngExtension() {
+        WorkOrder order = createTestOrder(1L, OrderStatus.IN_PROGRESS, 50L);
+        when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        when(evidenceRepository.save(any(WorkOrderEvidence.class))).thenAnswer(invocation -> {
+            WorkOrderEvidence ev = invocation.getArgument(0);
+            ev.setId(101L);
+            return ev;
+        });
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "evil.html",
+                "text/html",
+                VALID_PNG
+        );
+
+        EvidenceResponse response = service.uploadEvidence(1L, file, null, 50L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.filePath()).endsWith(".png");
+
+        ArgumentCaptor<WorkOrderEvidence> captor = ArgumentCaptor.forClass(WorkOrderEvidence.class);
+        verify(evidenceRepository).save(captor.capture());
+        assertThat(captor.getValue().getFilePath()).endsWith(".png");
+        assertThat(captor.getValue().getContentType()).isEqualTo("image/png");
+    }
+
+    @Test
+    @DisplayName("F2-T09: Subir un PNG con Content-Type application/octet-stream se acepta y registra como image/png")
+    void uploadPngWithOctetStreamContentTypeDetectedAsPng() {
+        WorkOrder order = createTestOrder(1L, OrderStatus.IN_PROGRESS, 50L);
+        when(workOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        when(evidenceRepository.save(any(WorkOrderEvidence.class))).thenAnswer(invocation -> {
+            WorkOrderEvidence ev = invocation.getArgument(0);
+            ev.setId(102L);
+            return ev;
+        });
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "sample.bin",
+                "application/octet-stream",
+                VALID_PNG
+        );
+
+        EvidenceResponse response = service.uploadEvidence(1L, file, null, 50L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.contentType()).isEqualTo("image/png");
+        assertThat(response.filePath()).endsWith(".png");
     }
 
     @Test
@@ -129,7 +194,7 @@ class EvidenceServiceTest {
                 "file",
                 "photo.jpg",
                 "image/jpeg",
-                new byte[]{1, 2}
+                VALID_JPEG
         );
 
         assertThatThrownBy(() -> service.uploadEvidence(1L, file, null, 999L))

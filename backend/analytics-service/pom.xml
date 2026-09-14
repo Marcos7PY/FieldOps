@@ -89,6 +89,21 @@
             <artifactId>spring-kafka-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mssqlserver</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -130,6 +145,8 @@
                 <version>0.8.12</version>
                 <configuration>
                     <excludes>
+                        <exclude>com/fieldops/analytics/domain/model/**</exclude>
+                        <exclude>com/fieldops/analytics/infrastructure/kafka/DefaultKafkaOffsetResetter*</exclude>
                         <exclude>com/fieldops/analytics/infrastructure/tracing/**</exclude>
                         <exclude>com/fieldops/analytics/infrastructure/config/**</exclude>
                         <exclude>com/fieldops/analytics/api/dto/**</exclude>

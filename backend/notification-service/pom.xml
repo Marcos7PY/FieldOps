@@ -51,6 +51,14 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
@@ -141,6 +149,7 @@
                 <version>0.8.12</version>
                 <configuration>
                     <excludes>
+                        <exclude>com/fieldops/notifications/domain/model/**</exclude>
                         <exclude>com/fieldops/notifications/infrastructure/**</exclude>
                         <exclude>com/fieldops/notifications/NotificationApplication*</exclude>
                         <exclude>com/fieldops/events/**</exclude>

@@ -1,10 +1,13 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { ToastController } from '@ionic/angular';
+import { Network, ConnectionStatus } from '@capacitor/network';
+import { PluginListenerHandle } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
 import { DatabaseService } from './database.service';
 import { WorkOrderService } from './work-order.service';
 import { NetworkService } from './network.service';
 import { OfflineQueueService } from './offline-queue.service';
+import { EvidenceStorageService } from './evidence-storage.service';
 import { PendingOperation } from '../models';
 
 export interface SyncResult {
@@ -14,6 +17,8 @@ export interface SyncResult {
   errorCount: number;
 }
 
+const MAX_RETRIES = 8;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -22,12 +27,15 @@ export class SyncService {
   private readonly workOrderService = inject(WorkOrderService);
   private readonly network = inject(NetworkService);
   private readonly offlineQueue = inject(OfflineQueueService);
+  private readonly evidenceStorage = inject(EvidenceStorageService);
   private readonly toastController = inject(ToastController);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isSyncing = signal<boolean>(false);
   readonly lastSyncResult = signal<SyncResult | null>(null);
 
   private wasOffline = false;
+  private networkListener?: PluginListenerHandle;
 
   constructor() {
     this.setupAutoSync();
@@ -36,15 +44,22 @@ export class SyncService {
   private setupAutoSync(): void {
     this.wasOffline = !this.network.getCurrentStatus();
 
-    setInterval(() => {
-      const currentlyOnline = this.network.getCurrentStatus();
-      if (this.wasOffline && currentlyOnline) {
+    Network.addListener('networkStatusChange', (status: ConnectionStatus) => {
+      if (status.connected && this.wasOffline) {
         this.wasOffline = false;
-        this.syncPendingOperations();
-      } else if (!currentlyOnline) {
+        void this.syncPendingOperations();
+      } else if (!status.connected) {
         this.wasOffline = true;
       }
-    }, 2000);
+    }).then((handle) => {
+      this.networkListener = handle;
+    });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.networkListener) {
+        void this.networkListener.remove();
+      }
+    });
   }
 
   async syncPendingOperations(): Promise<SyncResult> {
@@ -67,13 +82,37 @@ export class SyncService {
       return result;
     }
 
+    const blockedOrders = new Set<number>();
+
     // Process operations strictly in FIFO order
     for (const op of operations) {
-      const outcome = await this.processOperation(op);
+      if (blockedOrders.has(op.orderId)) {
+        continue;
+      }
+
+      if (op.retryCount >= MAX_RETRIES) {
+        await this.db.updatePendingOperationStatus(
+          op.id,
+          'FAILED_PERMANENT',
+          `Se agotaron los ${MAX_RETRIES} intentos de sincronización`
+        );
+        result.errorCount++;
+        continue;
+      }
+
+      if (op.nextAttemptAt) {
+        const nextTime = new Date(op.nextAttemptAt).getTime();
+        if (Date.now() < nextTime) {
+          continue;
+        }
+      }
+
+      const outcome = await this.processOperation(op, blockedOrders);
       if (outcome === 'SUCCESS') {
         result.successCount++;
       } else if (outcome === 'CONFLICT') {
         result.conflictCount++;
+        blockedOrders.add(op.orderId);
       } else {
         result.errorCount++;
         if (!this.network.getCurrentStatus()) {
@@ -90,10 +129,13 @@ export class SyncService {
     return result;
   }
 
-  private async processOperation(op: PendingOperation): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
+  private async processOperation(
+    op: PendingOperation,
+    blockedOrders: Set<number>
+  ): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
     try {
       if (op.operationType === 'STATUS_CHANGE') {
-        return await this.processStatusChange(op);
+        return await this.processStatusChange(op, blockedOrders);
       } else if (op.operationType === 'UPLOAD_EVIDENCE') {
         return await this.processEvidenceUpload(op);
       }
@@ -104,14 +146,16 @@ export class SyncService {
   }
 
   private async processStatusChange(
-    op: PendingOperation
+    op: PendingOperation,
+    blockedOrders: Set<number>
   ): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
     const payload = JSON.parse(op.payloadJson);
-    const { newStatus, notes, version } = payload;
+    const { newStatus, notes, expectedVersion, version } = payload;
+    const effectiveVersion = expectedVersion !== undefined ? expectedVersion : version;
 
     try {
       const updated = await firstValueFrom(
-        this.workOrderService.changeStatus(op.orderId, { newStatus, notes }, version)
+        this.workOrderService.changeStatus(op.orderId, { newStatus, notes }, effectiveVersion)
       );
 
       await this.db.deletePendingOperation(op.id);
@@ -119,12 +163,14 @@ export class SyncService {
       return 'SUCCESS';
     } catch (err: any) {
       if (err.status === 409 || err.status === 412) {
-        // Optimistic concurrency conflict: mark for manual review without losing local data
         await this.db.updatePendingOperationStatus(
           op.id,
           'CONFLICT_MANUAL_REVIEW',
           'Conflicto de concurrencia: versión modificada en servidor'
         );
+        await this.db.blockPendingOperationsForOrder(op.orderId, op.id);
+        blockedOrders.add(op.orderId);
+
         const local = await this.db.getLocalOrderById(op.orderId);
         if (local) {
           local.syncStatus = 'CONFLICT';
@@ -133,11 +179,21 @@ export class SyncService {
         return 'CONFLICT';
       }
 
-      await this.db.updatePendingOperationStatus(
+      const nextAttempt = this.computeNextAttempt(op.retryCount + 1);
+      const newRetries = await this.db.incrementRetryCount(
         op.id,
-        'PENDING',
-        err.message || 'Error de red en sincronización'
+        err.message || 'Error de red en sincronización',
+        nextAttempt
       );
+
+      if (newRetries >= MAX_RETRIES) {
+        await this.db.updatePendingOperationStatus(
+          op.id,
+          'FAILED_PERMANENT',
+          `Se agotaron los ${MAX_RETRIES} intentos de sincronización`
+        );
+      }
+
       return 'ERROR';
     }
   }
@@ -146,21 +202,33 @@ export class SyncService {
     op: PendingOperation
   ): Promise<'SUCCESS' | 'CONFLICT' | 'ERROR'> {
     const payload = JSON.parse(op.payloadJson);
-    const { fileBase64, filename, metadata } = payload;
+    const { filePath, fileBase64, filename, contentType, metadata } = payload;
+    const mimeType = contentType || 'image/jpeg';
 
     try {
-      const byteCharacters = atob(fileBase64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      let blob: Blob;
+
+      if (filePath) {
+        blob = await this.evidenceStorage.readAsBlob(filePath, mimeType);
+      } else if (fileBase64) {
+        const byteCharacters = atob(fileBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: mimeType });
+      } else {
+        throw new Error('No se encontró archivo de evidencia para procesar');
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'image/jpeg' });
 
       await firstValueFrom(
         this.workOrderService.uploadEvidence(op.orderId, blob, filename, metadata)
       );
 
+      if (filePath) {
+        await this.evidenceStorage.deleteFile(filePath);
+      }
       await this.db.deletePendingOperation(op.id);
       return 'SUCCESS';
     } catch (err: any) {
@@ -173,13 +241,29 @@ export class SyncService {
         return 'CONFLICT';
       }
 
-      await this.db.updatePendingOperationStatus(
+      const nextAttempt = this.computeNextAttempt(op.retryCount + 1);
+      const newRetries = await this.db.incrementRetryCount(
         op.id,
-        'PENDING',
-        err.message || 'Error de red en sincronización'
+        err.message || 'Error de red en sincronización',
+        nextAttempt
       );
+
+      if (newRetries >= MAX_RETRIES) {
+        await this.db.updatePendingOperationStatus(
+          op.id,
+          'FAILED_PERMANENT',
+          `Se agotaron los ${MAX_RETRIES} intentos de sincronización`
+        );
+      }
+
       return 'ERROR';
     }
+  }
+
+  computeNextAttempt(retryCount: number): string {
+    const baseDelay = Math.min(Math.pow(2, retryCount) * 1000, 300000);
+    const jitter = baseDelay * (0.8 + Math.random() * 0.4); // 20% jitter
+    return new Date(Date.now() + jitter).toISOString();
   }
 
   private async notifySyncResult(result: SyncResult): Promise<void> {
@@ -200,5 +284,29 @@ export class SyncService {
       });
       await toast.present();
     }
+  }
+
+  async retryConflict(opId: number, freshServerVersion: number): Promise<void> {
+    await this.db.requeuePendingOperation(opId, freshServerVersion);
+    const op = await this.db.getPendingOperationById(opId);
+    if (op) {
+      await this.db.unblockPendingOperationsForOrder(op.orderId, freshServerVersion + 1);
+    }
+    await this.offlineQueue.refreshPendingCount();
+  }
+
+  async discardConflict(opId: number): Promise<void> {
+    const op = await this.db.getPendingOperationById(opId);
+    await this.db.deletePendingOperation(opId);
+    if (op) {
+      if (this.network.getCurrentStatus()) {
+        try {
+          const fresh = await firstValueFrom(this.workOrderService.getWorkOrderById(op.orderId));
+          await this.db.saveLocalOrders([fresh]);
+          await this.db.unblockPendingOperationsForOrder(op.orderId, fresh.version);
+        } catch {}
+      }
+    }
+    await this.offlineQueue.refreshPendingCount();
   }
 }

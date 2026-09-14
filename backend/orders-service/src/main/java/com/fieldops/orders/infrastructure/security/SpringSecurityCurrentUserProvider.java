@@ -1,12 +1,9 @@
 package com.fieldops.orders.infrastructure.security;
 
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
@@ -15,34 +12,18 @@ import java.util.Optional;
 @Component
 public class SpringSecurityCurrentUserProvider implements CurrentUserProvider {
 
-    private final HttpServletRequest request;
-
-    public SpringSecurityCurrentUserProvider(@Autowired(required = false) HttpServletRequest request) {
-        this.request = request;
-    }
-
     @Override
     public Optional<Long> getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            Object userIdClaim = jwt.getClaim("userId");
-            if (userIdClaim instanceof Number number) {
-                return Optional.of(number.longValue());
-            } else if (userIdClaim instanceof String str) {
-                try {
-                    return Optional.of(Long.parseLong(str));
-                } catch (NumberFormatException e) {
-                    return Optional.empty();
-                }
+            Object claim = jwtAuth.getToken().getClaim("userId");
+            if (claim instanceof Number n) {
+                return Optional.of(n.longValue());
             }
-        }
-        if (request != null) {
-            String headerVal = request.getHeader("X-User-Id");
-            if (headerVal != null && !headerVal.isBlank()) {
+            if (claim instanceof String s) {
                 try {
-                    return Optional.of(Long.parseLong(headerVal.trim()));
-                } catch (NumberFormatException e) {
+                    return Optional.of(Long.parseLong(s));
+                } catch (NumberFormatException ignored) {
                     return Optional.empty();
                 }
             }
@@ -61,31 +42,21 @@ public class SpringSecurityCurrentUserProvider implements CurrentUserProvider {
 
     @Override
     public boolean isSupervisor() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
-            return auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch(a -> a.equals("ROLE_SUPERVISOR"));
-        }
-        if (request != null) {
-            String roleHeader = request.getHeader("X-User-Role");
-            return "ROLE_SUPERVISOR".equalsIgnoreCase(roleHeader);
-        }
-        return false;
+        return hasAuthority("ROLE_SUPERVISOR");
     }
 
     @Override
     public boolean isTechnician() {
+        return hasAuthority("ROLE_TECHNICIAN");
+    }
+
+    private boolean hasAuthority(String authority) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
-            return auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch(a -> a.equals("ROLE_TECHNICIAN"));
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return false;
         }
-        if (request != null) {
-            String roleHeader = request.getHeader("X-User-Role");
-            return "ROLE_TECHNICIAN".equalsIgnoreCase(roleHeader);
-        }
-        return false;
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
     }
 }

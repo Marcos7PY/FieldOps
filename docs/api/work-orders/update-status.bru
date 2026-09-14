@@ -1,10 +1,10 @@
-﻿meta {
+meta {
   name: Actualizar Estado de Orden
   type: http
   seq: 5
 }
 
-put {
+patch {
   url: {{baseUrl}}/api/v1/work-orders/1/status
   body: json
   auth: bearer
@@ -20,7 +20,7 @@ auth:bearer {
 
 body:json {
   {
-    "status": "IN_PROGRESS",
-    "comment": "Inicio de tareas de mantenimiento en sitio"
+    "newStatus": "IN_PROGRESS",
+    "notes": "Inicio de tareas de mantenimiento en sitio"
   }
 }

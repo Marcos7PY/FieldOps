@@ -3,17 +3,15 @@ package com.fieldops.notifications.application.service;
 import com.fieldops.events.avro.OrderAssignedPayload;
 import com.fieldops.events.avro.OrderCompletedPayload;
 import com.fieldops.events.avro.WorkOrderEvent;
-import com.fieldops.notifications.domain.model.NotificationLog;
-import com.fieldops.notifications.domain.model.ProcessedEvent;
 import com.fieldops.notifications.domain.model.ProcessedEventId;
-import com.fieldops.notifications.infrastructure.persistence.NotificationLogRepository;
+import com.fieldops.notifications.infrastructure.client.UserDirectoryClient;
 import com.fieldops.notifications.infrastructure.persistence.ProcessedEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class DefaultNotificationProcessingService implements NotificationProcessingService {
@@ -21,17 +19,20 @@ public class DefaultNotificationProcessingService implements NotificationProcess
     private static final Logger log = LoggerFactory.getLogger(DefaultNotificationProcessingService.class);
 
     private final ProcessedEventRepository processedEventRepository;
-    private final NotificationLogRepository notificationLogRepository;
+    private final NotificationLogWriter notificationLogWriter;
     private final EmailService emailService;
+    private final UserDirectoryClient userDirectoryClient;
 
     public DefaultNotificationProcessingService(
             ProcessedEventRepository processedEventRepository,
-            NotificationLogRepository notificationLogRepository,
-            EmailService emailService
+            NotificationLogWriter notificationLogWriter,
+            EmailService emailService,
+            UserDirectoryClient userDirectoryClient
     ) {
         this.processedEventRepository = processedEventRepository;
-        this.notificationLogRepository = notificationLogRepository;
+        this.notificationLogWriter = notificationLogWriter;
         this.emailService = emailService;
+        this.userDirectoryClient = userDirectoryClient;
     }
 
     @Override
@@ -41,37 +42,102 @@ public class DefaultNotificationProcessingService implements NotificationProcess
     }
 
     @Override
-    @Transactional
     public void processAndRecord(WorkOrderEvent event, String consumerGroup) {
         String eventType = event.getEventType();
         String eventId = event.getEventId();
         log.info("Processing event {} for order {} (type={})", eventId, event.getOrderId(), eventType);
 
-        if ("ORDER_ASSIGNED".equals(eventType) && event.getPayload() instanceof OrderAssignedPayload payload) {
-            handleOrderAssigned(event, payload);
-        } else if ("ORDER_COMPLETED".equals(eventType) && event.getPayload() instanceof OrderCompletedPayload payload) {
-            handleOrderCompleted(event, payload);
-        } else {
+        NotificationPlan plan = buildPlan(event);
+        if (plan == null) {
             log.debug("Event type {} ignored by notification service", eventType);
+            notificationLogWriter.markProcessed(eventId, consumerGroup);
+            return;
         }
 
-        processedEventRepository.save(new ProcessedEvent(eventId, consumerGroup, LocalDateTime.now()));
+        Long logId = notificationLogWriter.recordAttempt(plan, eventId);
+
+        try {
+            emailService.send(plan);
+            notificationLogWriter.markSent(logId);
+        } catch (Exception e) {
+            log.error("Failed to send notification for event {}: {}", eventId, e.getMessage(), e);
+            notificationLogWriter.markFailed(logId, e.getMessage());
+            if (e instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IllegalStateException("Failed to send notification email", e);
+        }
+
+        notificationLogWriter.markProcessed(eventId, consumerGroup);
     }
 
-    private void handleOrderAssigned(WorkOrderEvent event, OrderAssignedPayload payload) {
+    private NotificationPlan buildPlan(WorkOrderEvent event) {
+        String eventType = event.getEventType();
+        if ("ORDER_ASSIGNED".equals(eventType) && event.getPayload() instanceof OrderAssignedPayload payload) {
+            return buildOrderAssignedPlan(event, payload);
+        } else if ("ORDER_COMPLETED".equals(eventType) && event.getPayload() instanceof OrderCompletedPayload payload) {
+            return buildOrderCompletedPlan(event, payload);
+        }
+        return null;
+    }
+
+    private NotificationPlan buildOrderAssignedPlan(WorkOrderEvent event, OrderAssignedPayload payload) {
+        String technicianIdStr = payload.getTechnicianId();
         String recipient = payload.getTechnicianEmail();
         String technicianName = payload.getTechnicianName();
-        String scheduledAt = payload.getScheduledAt() != null ? payload.getScheduledAt().toString() : "No especificada";
 
-        emailService.sendOrderAssignedNotification(recipient, technicianName, event.getOrderCode(), scheduledAt);
-        logNotification(event.getEventId(), recipient, "Nueva orden asignada: " + event.getOrderCode(), "SENT");
+        if (technicianIdStr != null && !technicianIdStr.isBlank()) {
+            try {
+                Long techId = Long.parseLong(technicianIdStr);
+                Optional<UserDirectoryClient.UserDto> userOpt = userDirectoryClient.findUserById(techId);
+                if (userOpt.isPresent()) {
+                    UserDirectoryClient.UserDto user = userOpt.get();
+                    if (user.email() != null && !user.email().isBlank()) {
+                        recipient = user.email();
+                    }
+                    if (user.fullName() != null && !user.fullName().isBlank()) {
+                        technicianName = user.fullName();
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        if (recipient == null || recipient.isBlank()) {
+            recipient = "tecnico" + technicianIdStr + "@fieldops.com";
+        }
+        if (technicianName == null || technicianName.isBlank()) {
+            technicianName = "Tecnico " + technicianIdStr;
+        }
+
+        String scheduledAt = payload.getScheduledAt() != null ? payload.getScheduledAt().toString() : "No especificada";
+        return new OrderAssignedPlan(recipient, technicianName, event.getOrderCode(), scheduledAt);
     }
 
-    private void handleOrderCompleted(WorkOrderEvent event, OrderCompletedPayload payload) {
-        String recipient = "supervisor@fieldops.com";
-        String completedAt = payload.getCompletedAt() != null ? payload.getCompletedAt().toString() : "No especificada";
+    private NotificationPlan buildOrderCompletedPlan(WorkOrderEvent event, OrderCompletedPayload payload) {
+        String recipient = null;
+        String createdBy = payload.getCreatedBy();
 
-        emailService.sendOrderCompletedNotification(
+        if (createdBy != null && !createdBy.isBlank()) {
+            try {
+                Long createdById = Long.parseLong(createdBy);
+                Optional<UserDirectoryClient.UserDto> userOpt = userDirectoryClient.findUserById(createdById);
+                if (userOpt.isPresent() && userOpt.get().email() != null && !userOpt.get().email().isBlank()) {
+                    recipient = userOpt.get().email();
+                }
+            } catch (NumberFormatException ignored) {
+                if (createdBy.contains("@")) {
+                    recipient = createdBy;
+                }
+            }
+        }
+
+        if (recipient == null || recipient.isBlank()) {
+            recipient = "supervisor@fieldops.com";
+        }
+
+        String completedAt = payload.getCompletedAt() != null ? payload.getCompletedAt().toString() : "No especificada";
+        return new OrderCompletedPlan(
                 recipient,
                 event.getOrderCode(),
                 payload.getTechnicianId(),
@@ -79,17 +145,5 @@ public class DefaultNotificationProcessingService implements NotificationProcess
                 payload.getEvidenceCount(),
                 completedAt
         );
-        logNotification(event.getEventId(), recipient, "Orden completada: " + event.getOrderCode(), "SENT");
-    }
-
-    private void logNotification(String eventId, String recipient, String subject, String status) {
-        NotificationLog notificationLog = new NotificationLog(
-                eventId,
-                recipient,
-                subject,
-                LocalDateTime.now(),
-                status
-        );
-        notificationLogRepository.save(notificationLog);
     }
 }

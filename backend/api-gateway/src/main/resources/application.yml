@@ -11,11 +11,20 @@ spring:
           jwk-set-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
   cloud:
     gateway:
+      default-filters:
+        - RemoveRequestHeader=X-User-Id
+        - RemoveRequestHeader=X-User-Role
+        - RemoveRequestHeader=X-Internal-Auth
+        - RemoveRequestHeader=X-Internal-Token
       routes:
         - id: auth-service-api
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/auth/**
+        - id: auth-service-users
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/users/**
         - id: auth-service-jwks
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:

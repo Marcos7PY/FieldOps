@@ -59,6 +59,8 @@ export class WorkOrderDetailComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionSuccess = signal<string | null>(null);
+  /** Tracks whether the latest action error was a version-conflict (409/412) */
+  readonly isConflictError = signal<boolean>(false);
 
   readonly showStatusForm = signal<boolean>(false);
   readonly showAssignForm = signal<boolean>(false);
@@ -134,6 +136,7 @@ export class WorkOrderDetailComponent implements OnInit {
     this.actionLoading.set(true);
     this.actionError.set(null);
     this.actionSuccess.set(null);
+    this.isConflictError.set(false);
 
     const raw = this.statusForm.getRawValue();
     const payload: ChangeStatusRequest = {
@@ -154,10 +157,10 @@ export class WorkOrderDetailComponent implements OnInit {
       error: (err) => {
         this.actionLoading.set(false);
         if (err.status === 409 || err.status === 412) {
+          this.isConflictError.set(true);
           this.actionError.set(
-            'Conflicto de concurrencia: la orden fue modificada por otro usuario. Recargando datos actualizados...'
+            'Otro usuario modificó esta orden. Recarga para ver los cambios actuales.'
           );
-          this.loadOrder(current.id);
         } else if (err.status === 422 || err.status === 400) {
           this.actionError.set(err.error?.detail || 'Transición de estado no permitida.');
         } else {
@@ -176,6 +179,7 @@ export class WorkOrderDetailComponent implements OnInit {
     this.actionLoading.set(true);
     this.actionError.set(null);
     this.actionSuccess.set(null);
+    this.isConflictError.set(false);
 
     const raw = this.assignForm.getRawValue();
     let scheduledAtFormatted: string | null = null;
@@ -200,10 +204,10 @@ export class WorkOrderDetailComponent implements OnInit {
       error: (err) => {
         this.actionLoading.set(false);
         if (err.status === 409 || err.status === 412) {
+          this.isConflictError.set(true);
           this.actionError.set(
-            'Conflicto de concurrencia: la orden fue modificada. Recargando datos...'
+            'Otro usuario modificó esta orden. Recarga para ver los cambios actuales.'
           );
-          this.loadOrder(current.id);
         } else {
           this.actionError.set(err.error?.detail || 'Error al asignar el técnico a la orden.');
         }

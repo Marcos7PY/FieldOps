@@ -97,7 +97,7 @@ class TransactionalOutboxServiceTest {
         assertThat(deserialized.getPayload()).isInstanceOf(OrderAssignedPayload.class);
         OrderAssignedPayload payload = (OrderAssignedPayload) deserialized.getPayload();
         assertThat(payload.getTechnicianId()).isEqualTo("42");
-        assertThat(payload.getTechnicianEmail()).isEqualTo("tecnico42@fieldops.com");
+        assertThat(payload.getTechnicianEmail()).isNull();
     }
 
     @Test
@@ -134,6 +134,7 @@ class TransactionalOutboxServiceTest {
         assertThat(payload.getTechnicianId()).isEqualTo("42");
         assertThat(payload.getDurationMinutes()).isEqualTo(60);
         assertThat(payload.getEvidenceCount()).isEqualTo(2);
+        assertThat(payload.getCreatedBy()).isEqualTo("1");
     }
 
     @Test

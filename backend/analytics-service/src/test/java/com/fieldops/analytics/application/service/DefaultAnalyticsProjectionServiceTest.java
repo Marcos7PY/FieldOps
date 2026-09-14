@@ -8,7 +8,6 @@ import com.fieldops.events.avro.OrderStartedPayload;
 import com.fieldops.events.avro.WorkOrderEvent;
 import com.fieldops.analytics.domain.model.ProcessedEvent;
 import com.fieldops.analytics.domain.model.ProcessedEventId;
-import com.fieldops.analytics.domain.model.ProjectionCheckpoint;
 import com.fieldops.analytics.infrastructure.persistence.ProcessedEventRepository;
 import com.fieldops.analytics.infrastructure.persistence.ProjectionCheckpointRepository;
 import com.fieldops.analytics.infrastructure.persistence.WorkOrderDailyMetricRepository;
@@ -23,7 +22,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,7 +77,7 @@ class DefaultAnalyticsProjectionServiceTest {
                 .setPayload(new OrderCreatedPayload("T", 1L, "C", "HIGH", "u"))
                 .build();
 
-        when(checkpointRepository.findById("analytics-group")).thenReturn(Optional.empty());
+        when(checkpointRepository.incrementCheckpoint(eq("analytics-group"), any())).thenReturn(1);
 
         service.projectEvent(event, "analytics-group");
 
@@ -96,9 +94,7 @@ class DefaultAnalyticsProjectionServiceTest {
         verify(processedEventRepository).save(processedCaptor.capture());
         assertThat(processedCaptor.getValue().getId().getEventId()).isEqualTo(eventId);
 
-        ArgumentCaptor<ProjectionCheckpoint> checkpointCaptor = ArgumentCaptor.forClass(ProjectionCheckpoint.class);
-        verify(checkpointRepository).save(checkpointCaptor.capture());
-        assertThat(checkpointCaptor.getValue().getEventsProcessed()).isEqualTo(1L);
+        verify(checkpointRepository).incrementCheckpoint(eq("analytics-group"), any());
     }
 
     @Test

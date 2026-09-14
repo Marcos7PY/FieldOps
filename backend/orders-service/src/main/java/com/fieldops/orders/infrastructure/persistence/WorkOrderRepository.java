@@ -32,6 +32,13 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, Long>, Jpa
     @Query("SELECT w.priority, COUNT(w) FROM WorkOrder w GROUP BY w.priority")
     java.util.List<Object[]> countGroupedByPriority();
 
-    @Query("SELECT w.startedAt, w.completedAt FROM WorkOrder w WHERE w.status = com.fieldops.orders.domain.model.OrderStatus.COMPLETED AND w.startedAt IS NOT NULL AND w.completedAt IS NOT NULL")
-    java.util.List<Object[]> findCompletedDurations();
+    @Query(value = """
+            SELECT AVG(CAST(DATEDIFF(MINUTE, started_at, completed_at) AS DECIMAL(18,4)))
+            FROM work_order
+            WHERE status = 'COMPLETED'
+              AND started_at IS NOT NULL
+              AND completed_at IS NOT NULL
+              AND completed_at >= started_at
+            """, nativeQuery = true)
+    java.math.BigDecimal findAverageCompletionMinutes();
 }

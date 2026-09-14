@@ -1,4 +1,4 @@
-﻿# FieldOps: Plataforma de Gestión de Órdenes de Servicio Técnico
+# FieldOps: Plataforma de Gestión de Órdenes de Servicio Técnico
 
 FieldOps coordina la atención técnica en instalaciones de clientes donde las órdenes requieren asignación a especialistas, ejecución en campo y registro auditable de evidencias. El sistema centraliza la recepción de solicitudes desde la oficina central, permite el seguimiento del ciclo de vida de cada servicio y asegura la captura de fotografías y coordenadas geográficas durante la intervención.
 
@@ -12,13 +12,13 @@ El sistema sigue una arquitectura de microservicios orientada a eventos, con esq
 
 ### Componentes principales
 
-1. **Web Admin Portal (Angular 19):** Panel administrativo de escritorio para creación de órdenes, asignación de técnicos, consulta de métricas agregadas y seguimiento en tiempo real.
-2. **Mobile Technician App (Ionic 8 + Capacitor 7):** Aplicación móvil para personal de campo con base de datos SQLite embebida, captura de fotos, geolocalización satelital y cola de sincronización FIFO.
-3. **API Gateway (Spring Cloud Gateway):** Punto de entrada perimetral con enrutamiento dinámico, validación de firmas JWT contra JWKS, CORS y limitación de tasa por ventana deslizante.
-4. **Auth Service (Spring Boot 3.3):** Servicio de identidades y credenciales. Gestiona usuarios, emite tokens JWT firmados asimétricamente con clave privada RSA 2048 y expone el conjunto de claves públicas en `/.well-known/jwks.json`.
-5. **Orders Service (Spring Boot 3.3):** Núcleo transaccional de órdenes de trabajo. Aplica la máquina de estados, valida precondiciones con bloqueo optimista (`If-Match`), persiste evidencias y almacena eventos en la tabla outbox.
-6. **Notification Service (Spring Boot 3.3):** Consumidor asíncrono de eventos de Kafka. Procesa avisos de asignación y cambio de estado, despachando correos HTML mediante plantillas Thymeleaf hacia un servidor SMTP con garantía de idempotencia.
-7. **Analytics Service (Spring Boot 3.3):** Proyector CQRS de eventos. Construye lecturas analíticas consolidadas por fecha y técnico, soportando reconstrucciones históricas de proyecciones sin consultar la base operativa.
+1. **Web Admin Portal (Angular 22):** Panel administrativo de escritorio para creación de órdenes, asignación de técnicos, consulta de métricas agregadas y seguimiento en tiempo real.
+2. **Mobile Technician App (Ionic 9 + Capacitor 8):** Aplicación móvil para personal de campo con base de datos SQLite embebida, captura de fotos, geolocalización satelital y cola de sincronización FIFO.
+3. **API Gateway (Spring Cloud Gateway, Java 21):** Punto de entrada perimetral con enrutamiento dinámico, validación de firmas JWT contra JWKS, CORS y limitación de tasa por ventana deslizante.
+4. **Auth Service (Spring Boot 3.3.4, Java 21):** Servicio de identidades y credenciales. Gestiona usuarios, emite tokens JWT firmados asimétricamente con clave privada RSA 2048 y expone el conjunto de claves públicas en `/.well-known/jwks.json`.
+5. **Orders Service (Spring Boot 3.3.4, Java 21):** Núcleo transaccional de órdenes de trabajo. Aplica la máquina de estados, valida precondiciones con bloqueo optimista (`If-Match`), persiste evidencias y almacena eventos en la tabla outbox.
+6. **Notification Service (Spring Boot 3.3.4, Java 21):** Consumidor asíncrono de eventos de Kafka. Procesa avisos de asignación y cambio de estado, despachando correos HTML mediante plantillas Thymeleaf hacia un servidor SMTP con garantía de idempotencia.
+7. **Analytics Service (Spring Boot 3.3.4, Java 21):** Proyector CQRS de eventos. Construye lecturas analíticas consolidadas por fecha y técnico, soportando reconstrucciones históricas de proyecciones sin consultar la base operativa.
 8. **Infraestructura auxiliar:** Clúster Kafka KRaft con Schema Registry (compatibilidad BACKWARD de esquemas Avro), consola de administración de mensajería AKHQ y servidor SMTP MailHog para pruebas de correo.
 
 ---
@@ -108,7 +108,9 @@ Las decisiones estructurales tomadas durante el desarrollo del proyecto se encue
 - [ADR 0004: Sincronización sin conexión, cola de operaciones y resolución de conflictos](docs/adr/0004-sincronizacion-offline.md)
 - [ADR 0005: Elección de Capacitor frente a Cordova y migración de complementos](docs/adr/0005-capacitor-sobre-cordova.md)
 - [ADR 0006: Limitación de tasa reactiva en memoria con ventana deslizante](docs/adr/0006-rate-limiting-en-memoria.md)
-- [ADR 0007: Estrategia de almacenamiento de credenciales en el cliente web](docs/adr/0007-almacenamiento-tokens-frontend.md)
+- [ADR 0007: Estrategia de almacenamiento de credenciales en el cliente web y móvil](docs/adr/0007-almacenamiento-tokens-frontend.md)
+- [ADR 0008: Numeración secuencial y prefijos de migraciones Flyway](docs/adr/0008-numeracion-migraciones.md)
+- [ADR 0009: Resolución desacoplada de destinatarios para notificaciones](docs/adr/0009-resolucion-destinatarios-notificacion.md)
 
 ---
 

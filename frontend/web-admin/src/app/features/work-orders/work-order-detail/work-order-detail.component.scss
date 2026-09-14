@@ -569,3 +569,44 @@
     }
   }
 }
+
+.error-banner,
+.conflict-banner,
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  span {
+    flex: 1;
+  }
+}
+
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+.conflict-banner {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #92400e;
+
+  button {
+    flex-shrink: 0;
+  }
+}
+
+.success-banner {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}

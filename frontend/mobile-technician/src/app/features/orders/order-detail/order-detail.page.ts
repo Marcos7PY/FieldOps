@@ -207,7 +207,7 @@ export class OrderDetailPage implements OnInit {
 
   async startWork(): Promise<void> {
     const current = this.order();
-    if (!current || this.updatingStatus()) return;
+    if (!current || this.updatingStatus() || this.db.storageMode() === 'failed') return;
 
     this.updatingStatus.set(true);
 
@@ -215,8 +215,7 @@ export class OrderDetailPage implements OnInit {
       await this.offlineQueue.queueStatusChange(
         current.id,
         'IN_PROGRESS',
-        'Inicio de labores reportado sin conexión',
-        current.version
+        'Inicio de labores reportado sin conexión'
       );
       this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
       this.updatingStatus.set(false);
@@ -249,8 +248,7 @@ export class OrderDetailPage implements OnInit {
             await this.offlineQueue.queueStatusChange(
               current.id,
               'IN_PROGRESS',
-              'Inicio de labores reportado tras pérdida de red',
-              current.version
+              'Inicio de labores reportado tras pérdida de red'
             );
             this.order.set({ ...current, status: 'IN_PROGRESS', version: current.version + 1 });
             this.updatingStatus.set(false);
@@ -271,7 +269,7 @@ export class OrderDetailPage implements OnInit {
 
   async promptCompleteWork(): Promise<void> {
     const current = this.order();
-    if (!current || this.updatingStatus()) return;
+    if (!current || this.updatingStatus() || this.db.storageMode() === 'failed') return;
 
     const alert = await this.alertController.create({
       header: 'Completar Orden',
@@ -311,12 +309,7 @@ export class OrderDetailPage implements OnInit {
       : notes;
 
     if (!this.network.isOnline()) {
-      await this.offlineQueue.queueStatusChange(
-        current.id,
-        'COMPLETED',
-        finalNotes,
-        current.version
-      );
+      await this.offlineQueue.queueStatusChange(current.id, 'COMPLETED', finalNotes);
       this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
       this.updatingStatus.set(false);
       const alert = await this.alertController.create({
@@ -345,12 +338,7 @@ export class OrderDetailPage implements OnInit {
         },
         error: async (err) => {
           if (err.status === 0) {
-            await this.offlineQueue.queueStatusChange(
-              current.id,
-              'COMPLETED',
-              finalNotes,
-              current.version
-            );
+            await this.offlineQueue.queueStatusChange(current.id, 'COMPLETED', finalNotes);
             this.order.set({ ...current, status: 'COMPLETED', version: current.version + 1 });
             this.updatingStatus.set(false);
             const alert = await this.alertController.create({

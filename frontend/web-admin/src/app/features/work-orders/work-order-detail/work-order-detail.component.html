@@ -47,10 +47,21 @@
   }
 
   @if (actionError()) {
-    <div class="error-banner" role="alert">
-      <mat-icon>error_outline</mat-icon>
-      <span>{{ actionError() }}</span>
-    </div>
+    @if (isConflictError()) {
+      <div class="conflict-banner" role="alert">
+        <mat-icon>sync_problem</mat-icon>
+        <span>{{ actionError() }}</span>
+        <button mat-raised-button color="warn" (click)="loadOrder(order()!.id)">
+          <mat-icon>refresh</mat-icon>
+          Recargar
+        </button>
+      </div>
+    } @else {
+      <div class="error-banner" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ actionError() }}</span>
+      </div>
+    }
   }
 
   @if (errorMessage()) {
