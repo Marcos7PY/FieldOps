@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import { Network, ConnectionStatus } from '@capacitor/network';
+import { App, AppState } from '@capacitor/app';
 import { PluginListenerHandle } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
 import { DatabaseService } from './database.service';
@@ -36,6 +37,8 @@ export class SyncService {
 
   private wasOffline = false;
   private networkListener?: PluginListenerHandle;
+  private appStateListener?: PluginListenerHandle;
+  private retryTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
     this.setupAutoSync();
@@ -55,9 +58,30 @@ export class SyncService {
       this.networkListener = handle;
     });
 
+    App.addListener('appStateChange', (state: AppState) => {
+      if (state.isActive && this.network.getCurrentStatus()) {
+        void this.syncPendingOperations();
+      }
+    }).then((handle) => {
+      this.appStateListener = handle;
+    });
+
+    // P1-7: Periodic retry check for operations waiting on backoff timer
+    this.retryTimer = setInterval(() => {
+      if (this.network.getCurrentStatus() && !this.isSyncing()) {
+        void this.syncPendingOperations();
+      }
+    }, 30000);
+
     this.destroyRef.onDestroy(() => {
       if (this.networkListener) {
         void this.networkListener.remove();
+      }
+      if (this.appStateListener) {
+        void this.appStateListener.remove();
+      }
+      if (this.retryTimer) {
+        clearInterval(this.retryTimer);
       }
     });
   }
@@ -69,64 +93,68 @@ export class SyncService {
 
     this.isSyncing.set(true);
 
-    const operations = await this.db.getPendingOperations();
-    const result: SyncResult = {
-      totalProcessed: operations.length,
-      successCount: 0,
-      conflictCount: 0,
-      errorCount: 0,
-    };
+    try {
+      const operations = await this.db.getPendingOperations();
+      const result: SyncResult = {
+        totalProcessed: operations.length,
+        successCount: 0,
+        conflictCount: 0,
+        errorCount: 0,
+      };
 
-    if (operations.length === 0) {
-      this.isSyncing.set(false);
-      return result;
-    }
-
-    const blockedOrders = new Set<number>();
-
-    // Process operations strictly in FIFO order
-    for (const op of operations) {
-      if (blockedOrders.has(op.orderId)) {
-        continue;
+      if (operations.length === 0) {
+        return result;
       }
 
-      if (op.retryCount >= MAX_RETRIES) {
-        await this.db.updatePendingOperationStatus(
-          op.id,
-          'FAILED_PERMANENT',
-          `Se agotaron los ${MAX_RETRIES} intentos de sincronización`
-        );
-        result.errorCount++;
-        continue;
-      }
+      const blockedOrders = new Set<number>();
 
-      if (op.nextAttemptAt) {
-        const nextTime = new Date(op.nextAttemptAt).getTime();
-        if (Date.now() < nextTime) {
+      // Process operations strictly in FIFO order
+      for (const op of operations) {
+        if (blockedOrders.has(op.orderId)) {
           continue;
         }
-      }
 
-      const outcome = await this.processOperation(op, blockedOrders);
-      if (outcome === 'SUCCESS') {
-        result.successCount++;
-      } else if (outcome === 'CONFLICT') {
-        result.conflictCount++;
-        blockedOrders.add(op.orderId);
-      } else {
-        result.errorCount++;
-        if (!this.network.getCurrentStatus()) {
-          break;
+        if (op.retryCount >= MAX_RETRIES) {
+          await this.db.updatePendingOperationStatus(
+            op.id,
+            'FAILED_PERMANENT',
+            `Se agotaron los ${MAX_RETRIES} intentos de sincronización`
+          );
+          result.errorCount++;
+          blockedOrders.add(op.orderId);
+          continue;
+        }
+
+        if (op.nextAttemptAt) {
+          const nextTime = new Date(op.nextAttemptAt).getTime();
+          if (Date.now() < nextTime) {
+            blockedOrders.add(op.orderId);
+            continue;
+          }
+        }
+
+        const outcome = await this.processOperation(op, blockedOrders);
+        if (outcome === 'SUCCESS') {
+          result.successCount++;
+        } else if (outcome === 'CONFLICT') {
+          result.conflictCount++;
+          blockedOrders.add(op.orderId);
+        } else {
+          result.errorCount++;
+          blockedOrders.add(op.orderId);
+          if (!this.network.getCurrentStatus()) {
+            break;
+          }
         }
       }
+
+      await this.offlineQueue.refreshPendingCount();
+      this.lastSyncResult.set(result);
+      await this.notifySyncResult(result);
+      return result;
+    } finally {
+      this.isSyncing.set(false);
     }
-
-    await this.offlineQueue.refreshPendingCount();
-    this.lastSyncResult.set(result);
-    this.isSyncing.set(false);
-
-    await this.notifySyncResult(result);
-    return result;
   }
 
   private async processOperation(
@@ -140,7 +168,12 @@ export class SyncService {
         return await this.processEvidenceUpload(op);
       }
       return 'ERROR';
-    } catch {
+    } catch (err: any) {
+      await this.db.updatePendingOperationStatus(
+        op.id,
+        'FAILED_PERMANENT',
+        `Error irrecuperable en operación: ${err?.message || 'Payload corrupto'}`
+      );
       return 'ERROR';
     }
   }
@@ -177,6 +210,15 @@ export class SyncService {
           await this.db.saveLocalOrders([local as any]);
         }
         return 'CONFLICT';
+      }
+
+      if (err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+        await this.db.updatePendingOperationStatus(
+          op.id,
+          'FAILED_PERMANENT',
+          `Error no reintentable (${err.status}): ${err.error?.detail || err.message || 'Error de validación'}`
+        );
+        return 'ERROR';
       }
 
       const nextAttempt = this.computeNextAttempt(op.retryCount + 1);
@@ -239,6 +281,15 @@ export class SyncService {
           'Conflicto de concurrencia en subida de evidencia'
         );
         return 'CONFLICT';
+      }
+
+      if (err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+        await this.db.updatePendingOperationStatus(
+          op.id,
+          'FAILED_PERMANENT',
+          `Error no reintentable (${err.status}): ${err.error?.detail || err.message || 'Error de validación'}`
+        );
+        return 'ERROR';
       }
 
       const nextAttempt = this.computeNextAttempt(op.retryCount + 1);

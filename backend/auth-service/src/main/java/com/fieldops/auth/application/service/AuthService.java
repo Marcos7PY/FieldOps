@@ -34,12 +34,22 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
     }
 
+    private static final String DUMMY_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoO.8/k0a2lXQdCqB0j8R1N1YFq9Jq6KGa";
+
     @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
-                .orElseThrow(InvalidCredentialsException::new);
+                .orElse(null);
+
+        if (user == null) {
+            // Mitigate timing-based user enumeration attacks:
+            // Run BCrypt against a dummy hash so response time is consistent
+            passwordEncoder.matches(request.password(), DUMMY_HASH);
+            throw new InvalidCredentialsException();
+        }
 
         if (!user.isActive()) {
+            passwordEncoder.matches(request.password(), user.getPasswordHash());
             throw new InvalidCredentialsException();
         }
 

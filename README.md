@@ -41,15 +41,17 @@ El script genera automáticamente el par de claves RSA si no existen en `keys/`,
 
 ### Puntos de acceso
 
-| Servicio | URL | Descripción |
+| Servicio / Recurso | URL | Descripción |
 |---|---|---|
-| API Gateway | http://localhost:8080 | Entrada principal de peticiones REST |
-| Auth Service | http://localhost:8081 | Servicio de autenticación y JWKS |
-| Orders Service | http://localhost:8082 | API operativa de órdenes y evidencias |
-| Notification Service | http://localhost:8083 | Motor de procesamiento de notificaciones |
-| Analytics Service | http://localhost:8084 | API de consultas y proyecciones CQRS |
-| AKHQ | http://localhost:8091 | Consola web de Kafka (tópicos y offsets) |
-| MailHog | http://localhost:8025 | Bandeja de entrada de correos simulados |
+| API Gateway | http://localhost:8080 | Entrada perimetral única para todas las peticiones REST |
+| Rutas Auth (vía Gateway) | http://localhost:8080/api/v1/auth | Login, refresh de tokens y JWKS pública |
+| Rutas Órdenes (vía Gateway) | http://localhost:8080/api/v1/work-orders | Gestión de órdenes, cambios de estado y evidencias |
+| Rutas Analytics (vía Gateway) | http://localhost:8080/api/v1/analytics | Consultas de métricas y proyecciones CQRS |
+| AKHQ | http://localhost:8091 | Consola web de Kafka (tópicos, particiones y offsets) |
+| MailHog | http://localhost:8025 | Bandeja de entrada de correos simulados (SMTP puerto 1025) |
+| Schema Registry | http://localhost:8090 | Registro de esquemas Avro (modo de compatibilidad BACKWARD) |
+
+> **Nota de seguridad arquitectónica:** Siguiendo el principio de mínimo privilegio y defensa en profundidad, los microservicios (`auth-service`, `orders-service`, `notification-service`, `analytics-service`) se ejecutan aislados dentro de la red interna de Docker (`fieldops-net`) y no exponen puertos directamente al host. Todas las comunicaciones cliente pasan obligatoriamente por el **API Gateway** (puerto 8080), donde se aplican las validaciones de firmas JWT, límites de tasa y CORS.
 
 ### Credenciales de demostración
 
@@ -66,16 +68,16 @@ El script genera automáticamente el par de claves RSA si no existen en `keys/`,
 
 Cuando un técnico inicia o finaliza un servicio en la aplicación móvil, el evento recorre la arquitectura siguiendo el patrón Transactional Outbox:
 
-1. **Ingreso y persistencia ACID:** La petición HTTP PUT llega a `orders-service` a través del gateway. El servicio actualiza el estado de la orden en la tabla `work_orders` e inserta una fila en `outbox_events` dentro de la misma transacción de base de datos. Si la base de datos rechaza la operación, ni la orden ni el evento se confirman.
-2. **Publicación asíncrona:** El componente `OutboxPublisher` lee los eventos pendientes y los despacha al topic `fieldops.work-orders.events` en Kafka, utilizando la clave de partición `orderId`. El uso de `orderId` asegura que todas las transiciones de una misma orden viajen a la misma partición física, garantizando orden cronológico estricto en el consumo.
+1. **Ingreso y persistencia ACID:** La petición HTTP PATCH/POST llega a `orders-service` a través del gateway. El servicio actualiza el estado de la orden en la tabla `work_order` e inserta una fila en `outbox_event` dentro de la misma transacción de base de datos. Si la base de datos rechaza la operación, ni la orden ni el evento se confirman.
+2. **Publicación asíncrona:** El componente `OutboxPublisher` lee los eventos pendientes ordenados cronológicamente por `(created_at, id)` y los despacha al topic `fieldops.work-orders.events` en Kafka, utilizando la clave de partición `orderId`. El uso de `orderId` asegura que todas las transiciones de una misma orden viajen a la misma partición física, garantizando orden cronológico estricto por orden de trabajo. Ante un error transitorio de red o broker en una orden específica, el publicador aísla el agregado afectado para evitar carreras en esa orden sin detener el progreso de las demás órdenes del lote.
 3. **Validación de esquema:** Schema Registry verifica que la carga útil coincida con la versión registrada del esquema Avro `WorkOrderEvent`.
 4. **Consumo distribuido:** Dos grupos de consumidores independientes procesan el mensaje en paralelo:
-   - `notification-group` (`notification-service`): comprueba que el identificador del evento no haya sido procesado previamente, genera el correo con el detalle del servicio y lo entrega al servidor SMTP.
-   - `analytics-group` (`analytics-service`): actualiza los agregados diarios de órdenes completadas y recalcula el tiempo promedio de resolución del técnico asignado.
+   - `notification-group` (`notification-service`): comprueba idempotencia deduplicando por `(eventId, consumerGroup)`, resuelve al destinatario desde el directorio o payload sin inventar correos ficticios, genera el correo con el detalle del servicio y lo entrega al servidor SMTP.
+   - `analytics-group` (`analytics-service`): deduplica eventos y actualiza la proyección pre-agregada diaria (`work_order_daily_metrics`) indexada secundariamente por técnico y fecha.
 
 ![Consumer groups y particiones en AKHQ](docs/images/akhq-consumer-groups.png)
 
-Como se aprecia en la captura de AKHQ, ambos grupos operan con concurrencia alineada a las 3 particiones del topic, manteniendo un retardo (lag) de cero mensajes tras procesar 500.000 eventos de prueba.
+Como se aprecia en la captura de AKHQ, ambos grupos operan con concurrencia alineada a las 3 particiones del topic, manteniendo un retardo (lag) de cero mensajes tras procesar eventos en pruebas de carga.
 
 ---
 

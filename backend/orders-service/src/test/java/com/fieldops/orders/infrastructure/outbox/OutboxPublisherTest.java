@@ -70,7 +70,7 @@ class OutboxPublisherTest {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
         OutboxEvent e2 = createSampleOutboxEvent(2L, 102L, "ORDER_ASSIGNED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(e1, e2));
         when(kafkaOperations.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
@@ -100,28 +100,36 @@ class OutboxPublisherTest {
     }
 
     @Test
-    @DisplayName("F3-T01: Mock de send que devuelve future fallido -> publishedAt == null y detiene el lote")
-    void shouldHaltBatchWhenKafkaSendFailsToPreserveOrdering() {
+    @DisplayName("F3-T01: Mock de send que devuelve future fallido -> aggregate queda bloqueado pero otros aggregates avanzan")
+    void shouldHaltAggregateWhenKafkaSendFailsToPreserveOrdering() {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 201L, "ORDER_CREATED");
         OutboxEvent e2 = createSampleOutboxEvent(2L, 201L, "ORDER_ASSIGNED");
+        OutboxEvent e3 = createSampleOutboxEvent(3L, 301L, "ORDER_CREATED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
-                .thenReturn(List.of(e1, e2));
+        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
+                .thenReturn(List.of(e1, e2, e3));
         when(kafkaOperations.send(any(ProducerRecord.class)))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Broker rejected record")));
+                .thenAnswer(invocation -> {
+                    ProducerRecord<String, Object> record = invocation.getArgument(0);
+                    if ("201".equals(record.key())) {
+                        return CompletableFuture.failedFuture(new RuntimeException("Broker rejected record"));
+                    }
+                    return CompletableFuture.completedFuture(null);
+                });
 
         publisher.publishPendingEvents();
 
-        // Solo se intentó el primer evento; el lote se interrumpe para preservar el orden
-        verify(kafkaOperations, times(1)).send(any(ProducerRecord.class));
+        // e1 falló, e2 (mismo aggregate 201) se saltó para preservar orden, pero e3 (aggregate 301) sí se despachó
+        verify(kafkaOperations, times(2)).send(any(ProducerRecord.class));
         assertThat(e1.getPublishedAt()).isNull();
         assertThat(e2.getPublishedAt()).isNull();
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        assertThat(e3.getPublishedAt()).isNotNull();
+        verify(outboxEventRepository, times(1)).save(e3);
     }
 
     @Test
     void shouldDoNothingWhenNoPendingEvents() {
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of());
 
         publisher.publishPendingEvents();
@@ -133,7 +141,7 @@ class OutboxPublisherTest {
     void shouldGenerateTraceIdWhenNotPresentInMDC() {
         OutboxEvent e1 = createSampleOutboxEvent(1L, 101L, "ORDER_CREATED");
 
-        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100)))
                 .thenReturn(List.of(e1));
         when(kafkaOperations.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));

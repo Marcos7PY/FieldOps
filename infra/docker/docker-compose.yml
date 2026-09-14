@@ -106,8 +106,8 @@ services:
 
   api-gateway:
     build:
-      context: ../../backend/api-gateway
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/api-gateway/Dockerfile
     container_name: fieldops-api-gateway
     depends_on:
       auth-service:
@@ -131,8 +131,8 @@ services:
 
   auth-service:
     build:
-      context: ../../backend/auth-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/auth-service/Dockerfile
     container_name: fieldops-auth-service
     depends_on:
       sqlserver:
@@ -144,6 +144,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD:-${MSSQL_SA_PASSWORD}}
       JWT_KEY_PATH: /app/keys
       FIELDOPS_DEMO_DATA_ENABLED: "true"
+      FIELDOPS_SECURITY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-}
     volumes:
       - ${JWT_KEYS_PATH:-${JWT_KEY_PATH:-../../keys}}:/app/keys
     networks:
@@ -157,8 +158,8 @@ services:
 
   orders-service:
     build:
-      context: ../../backend/orders-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/orders-service/Dockerfile
     container_name: fieldops-orders-service
     depends_on:
       sqlserver:
@@ -189,8 +190,8 @@ services:
 
   notification-service:
     build:
-      context: ../../backend/notification-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/notification-service/Dockerfile
     container_name: fieldops-notification-service
     depends_on:
       sqlserver:
@@ -209,6 +210,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       AUTH_SERVICE_URL: http://auth-service:8081
+      AUTH_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-}
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
     networks:
@@ -222,8 +224,8 @@ services:
 
   analytics-service:
     build:
-      context: ../../backend/analytics-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/analytics-service/Dockerfile
     container_name: fieldops-analytics-service
     depends_on:
       sqlserver:

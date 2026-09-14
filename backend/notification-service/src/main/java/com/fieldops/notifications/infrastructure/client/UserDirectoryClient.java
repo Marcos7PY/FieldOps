@@ -23,13 +23,13 @@ public class UserDirectoryClient {
     public UserDirectoryClient(
             RestClient.Builder restClientBuilder,
             @Value("${fieldops.auth-service.url:http://localhost:8081}") String authServiceUrl,
-            @Value("${fieldops.security.internal-token:fieldops-internal-secret}") String internalToken
+            @Value("${fieldops.security.internal-token:}") String internalToken
     ) {
         this.restClient = restClientBuilder.baseUrl(authServiceUrl).build();
         this.internalToken = internalToken;
     }
 
-    @Cacheable(value = "users", key = "#userId", unless = "#result == null")
+    @Cacheable(value = "users", key = "#userId", unless = "#result == null || !#result.isPresent()")
     public Optional<UserDto> findUserById(Long userId) {
         if (userId == null) {
             return Optional.empty();

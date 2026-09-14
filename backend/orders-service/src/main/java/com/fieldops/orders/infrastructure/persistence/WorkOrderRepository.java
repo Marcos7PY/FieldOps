@@ -23,7 +23,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, Long>, Jpa
 
     Optional<WorkOrder> findByCode(String code);
 
-    @Query("SELECT COUNT(w) FROM WorkOrder w WHERE w.code LIKE :prefix%")
+    @Query("SELECT COUNT(w) FROM WorkOrder w WHERE w.code LIKE CONCAT(:prefix, '%')")
     long countByCodePrefix(@Param("prefix") String prefix);
 
     @Query("SELECT w.status, COUNT(w) FROM WorkOrder w GROUP BY w.status")

@@ -57,7 +57,7 @@ public class OutboxEventDispatcher {
         record.headers().add(TRACE_ID_HEADER, traceId.getBytes(StandardCharsets.UTF_8));
 
         try {
-            kafkaOperations.send(record).get(10, TimeUnit.SECONDS);
+            kafkaOperations.send(record).get(12, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Publicación interrumpida para el evento " + event.getEventId(), e);

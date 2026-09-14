@@ -30,22 +30,28 @@ public class OutboxPublisher {
     }
 
     @Scheduled(fixedDelay = 2000)
-    @SchedulerLock(name = "outbox_publisher_lock", lockAtLeastFor = "1s", lockAtMostFor = "10s")
+    @SchedulerLock(name = "outbox_publisher_lock", lockAtLeastFor = "1s", lockAtMostFor = "120s")
     public void publishPendingEvents() {
-        List<OutboxEvent> pendingEvents = outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100));
+        List<OutboxEvent> pendingEvents = outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(PageRequest.of(0, 100));
         if (pendingEvents.isEmpty()) {
             return;
         }
 
         log.debug("Processing {} pending outbox events", pendingEvents.size());
 
+        java.util.Set<Long> blockedAggregates = new java.util.HashSet<>();
         for (OutboxEvent event : pendingEvents) {
+            if (event.getAggregateId() != null && blockedAggregates.contains(event.getAggregateId())) {
+                continue;
+            }
             try {
                 dispatcher.dispatch(event);
             } catch (Exception e) {
-                log.error("Failed to publish outbox event id: {}, partition key will halt for ordering: {}",
-                        event.getEventId(), e.getMessage(), e);
-                break;
+                log.error("Failed to publish outbox event id: {}, aggregateId: {} will halt for ordering: {}",
+                        event.getEventId(), event.getAggregateId(), e.getMessage(), e);
+                if (event.getAggregateId() != null) {
+                    blockedAggregates.add(event.getAggregateId());
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     Optional<OutboxEvent> findByEventId(String eventId);
 
-    List<OutboxEvent> findByPublishedAtIsNullOrderByCreatedAtAsc(Pageable pageable);
+    List<OutboxEvent> findByPublishedAtIsNullOrderByCreatedAtAscIdAsc(Pageable pageable);
 
     List<OutboxEvent> findByAggregateIdOrderByCreatedAtAsc(Long aggregateId);
 }

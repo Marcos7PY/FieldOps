@@ -32,6 +32,8 @@ public class KafkaProducerConfig {
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         configProps.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);
         configProps.put(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
+        configProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 10000);
+        configProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000);
         configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
         configProps.put("schema.registry.url", schemaRegistryUrl);
 

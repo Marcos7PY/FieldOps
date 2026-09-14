@@ -100,9 +100,10 @@ public class WorkOrderController {
             @RequestParam(value = "size", defaultValue = "20") int size,
             @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort
     ) {
+        int boundedPage = Math.max(0, page);
         int boundedSize = Math.min(Math.max(1, size), 100);
         Sort sortOrder = parseSort(sort);
-        Pageable pageable = PageRequest.of(page, boundedSize, sortOrder);
+        Pageable pageable = PageRequest.of(boundedPage, boundedSize, sortOrder);
         Long resolvedUserId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
 
@@ -167,7 +168,7 @@ public class WorkOrderController {
     public ResponseEntity<EvidenceResponse> uploadEvidence(
             @PathVariable("id") Long id,
             @RequestPart("file") MultipartFile file,
-            @RequestPart(value = "metadata", required = false) EvidenceMetadata metadata
+            @RequestPart(value = "metadata", required = false) @Valid EvidenceMetadata metadata
     ) {
         Long resolvedTechnicianId = requireCurrentUserId();
         EvidenceResponse response = evidenceService.uploadEvidence(id, file, metadata, resolvedTechnicianId);
@@ -200,12 +201,19 @@ public class WorkOrderController {
         }
     }
 
+    private static final java.util.Set<String> ALLOWED_SORT_PROPERTIES = java.util.Set.of(
+            "id", "code", "title", "status", "priority", "createdAt", "updatedAt", "scheduledAt"
+    );
+
     private Sort parseSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return Sort.by(Sort.Direction.DESC, "createdAt");
         }
         String[] parts = sort.split(",");
         String property = parts[0].trim();
+        if (!ALLOWED_SORT_PROPERTIES.contains(property)) {
+            property = "createdAt";
+        }
         Sort.Direction direction = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim()))
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;

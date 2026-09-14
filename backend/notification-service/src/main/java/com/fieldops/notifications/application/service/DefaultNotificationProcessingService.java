@@ -42,12 +42,22 @@ public class DefaultNotificationProcessingService implements NotificationProcess
     }
 
     @Override
+    @Transactional
     public void processAndRecord(WorkOrderEvent event, String consumerGroup) {
         String eventType = event.getEventType();
         String eventId = event.getEventId();
         log.info("Processing event {} for order {} (type={})", eventId, event.getOrderId(), eventType);
 
-        NotificationPlan plan = buildPlan(event);
+        NotificationPlan plan;
+        try {
+            plan = buildPlan(event);
+        } catch (IllegalStateException ex) {
+            log.warn("Skipping notification for event {}: {}", eventId, ex.getMessage());
+            notificationLogWriter.recordSkipped(eventId, ex.getMessage());
+            notificationLogWriter.markProcessed(eventId, consumerGroup);
+            return;
+        }
+
         if (plan == null) {
             log.debug("Event type {} ignored by notification service", eventType);
             notificationLogWriter.markProcessed(eventId, consumerGroup);
@@ -104,10 +114,10 @@ public class DefaultNotificationProcessingService implements NotificationProcess
         }
 
         if (recipient == null || recipient.isBlank()) {
-            recipient = "tecnico" + technicianIdStr + "@fieldops.com";
+            throw new IllegalStateException("Recipient email could not be resolved for technician " + technicianIdStr);
         }
         if (technicianName == null || technicianName.isBlank()) {
-            technicianName = "Tecnico " + technicianIdStr;
+            technicianName = "Tecnico #" + technicianIdStr;
         }
 
         String scheduledAt = payload.getScheduledAt() != null ? payload.getScheduledAt().toString() : "No especificada";
@@ -133,7 +143,7 @@ public class DefaultNotificationProcessingService implements NotificationProcess
         }
 
         if (recipient == null || recipient.isBlank()) {
-            recipient = "supervisor@fieldops.com";
+            throw new IllegalStateException("Recipient email could not be resolved for createdBy " + createdBy);
         }
 
         String completedAt = payload.getCompletedAt() != null ? payload.getCompletedAt().toString() : "No especificada";

@@ -152,12 +152,12 @@ class NotificationProcessingServiceTest {
     @Test
     void shouldMarkFailedAndNotMarkProcessedWhenEmailFails() {
         String eventId = UUID.randomUUID().toString();
-        when(userDirectoryClient.findUserById(42L)).thenReturn(Optional.empty());
         when(notificationLogWriter.recordAttempt(any(), eq(eventId))).thenReturn(102L);
         doThrow(new MailSendException("SMTP connection refused")).when(emailService).send(any(NotificationPlan.class));
 
         OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
                 .setTechnicianId("42")
+                .setTechnicianEmail("carlos@fieldops.com")
                 .setScheduledAt(Instant.now())
                 .build();
 
@@ -177,6 +177,33 @@ class NotificationProcessingServiceTest {
         verify(notificationLogWriter).markFailed(102L, "SMTP connection refused");
         verify(notificationLogWriter, never()).markSent(any());
         verify(notificationLogWriter, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    void shouldRecordSkippedWhenRecipientCannotBeResolved() {
+        String eventId = UUID.randomUUID().toString();
+        when(userDirectoryClient.findUserById(42L)).thenReturn(Optional.empty());
+
+        OrderAssignedPayload payload = OrderAssignedPayload.newBuilder()
+                .setTechnicianId("42")
+                .setScheduledAt(Instant.now())
+                .build();
+
+        WorkOrderEvent event = WorkOrderEvent.newBuilder()
+                .setEventId(eventId)
+                .setEventType("ORDER_ASSIGNED")
+                .setOrderId(101L)
+                .setOrderCode("ORD-2026-0001")
+                .setOccurredAt(Instant.now())
+                .setSchemaVersion(1)
+                .setPayload(payload)
+                .build();
+
+        service.processAndRecord(event, "notification-group");
+
+        verify(notificationLogWriter).recordSkipped(eq(eventId), any());
+        verify(notificationLogWriter).markProcessed(eventId, "notification-group");
+        verify(emailService, never()).send(any());
     }
 
     @Test

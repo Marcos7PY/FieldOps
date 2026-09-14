@@ -29,9 +29,17 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler({VersionConflictException.class, OptimisticLockException.class})
+    @ExceptionHandler({
+            VersionConflictException.class,
+            OptimisticLockException.class,
+            org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+            org.hibernate.StaleObjectStateException.class
+    })
     public ProblemDetail handleVersionConflict(Exception ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        String detail = (ex instanceof VersionConflictException || ex instanceof OptimisticLockException)
+                ? ex.getMessage()
+                : "Version conflict: entity modified concurrently";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, detail);
         problem.setTitle("Version Conflict");
         problem.setType(URI.create("https://fieldops.com/errors/version-conflict"));
         problem.setProperty("timestamp", Instant.now());
@@ -101,8 +109,11 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnhandledException(Exception ex) {
+        log.error("Unhandled exception caught in GlobalExceptionHandler: ", ex);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected internal error occurred"

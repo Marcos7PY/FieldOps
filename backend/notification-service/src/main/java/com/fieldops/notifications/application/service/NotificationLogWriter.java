@@ -64,4 +64,17 @@ public class NotificationLogWriter {
     public void markProcessed(String eventId, String consumerGroup) {
         processedEventRepository.save(new ProcessedEvent(eventId, consumerGroup, LocalDateTime.now()));
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordSkipped(String eventId, String reason) {
+        NotificationLog notificationLog = new NotificationLog(
+                eventId,
+                "UNRESOLVED",
+                reason,
+                LocalDateTime.now(),
+                "SKIPPED_NO_RECIPIENT"
+        );
+        notificationLog.setErrorMessage(reason);
+        notificationLogRepository.save(notificationLog);
+    }
 }

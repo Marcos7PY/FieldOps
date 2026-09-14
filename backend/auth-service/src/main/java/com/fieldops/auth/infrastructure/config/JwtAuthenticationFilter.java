@@ -21,12 +21,14 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final RsaKeyProvider rsaKeyProvider;
     private final String internalToken;
 
     public JwtAuthenticationFilter(
             RsaKeyProvider rsaKeyProvider,
-            @Value("${fieldops.security.internal-token:fieldops-internal-secret}") String internalToken
+            @Value("${fieldops.security.internal-token:}") String internalToken
     ) {
         this.rsaKeyProvider = rsaKeyProvider;
         this.internalToken = internalToken;
@@ -39,17 +41,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String internalTokenHeader = request.getHeader("X-Internal-Token");
-        if (internalToken != null && !internalToken.isBlank() && internalToken.equals(internalTokenHeader)) {
-            UserPrincipal principal = new UserPrincipal(0L, "internal-service", List.of("ROLE_INTERNAL_SERVICE", "ROLE_SUPERVISOR"));
-            List<SimpleGrantedAuthority> authorities = List.of(
-                    new SimpleGrantedAuthority("ROLE_INTERNAL_SERVICE"),
-                    new SimpleGrantedAuthority("ROLE_SUPERVISOR")
+        if (internalToken != null && !internalToken.isBlank() && internalTokenHeader != null) {
+            boolean matches = java.security.MessageDigest.isEqual(
+                    internalToken.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    internalTokenHeader.getBytes(java.nio.charset.StandardCharsets.UTF_8)
             );
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            filterChain.doFilter(request, response);
-            return;
+            if (matches) {
+                UserPrincipal principal = new UserPrincipal(0L, "internal-service", List.of("ROLE_INTERNAL_SERVICE"));
+                List<SimpleGrantedAuthority> authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_INTERNAL_SERVICE")
+                );
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                filterChain.doFilter(request, response);
+                return;
+            }
         }
 
         String authHeader = request.getHeader("Authorization");
@@ -82,6 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
             } catch (Exception e) {
+                log.warn("JWT authentication error for URI {}: {}", request.getRequestURI(), e.getMessage());
                 SecurityContextHolder.clearContext();
             }
         }

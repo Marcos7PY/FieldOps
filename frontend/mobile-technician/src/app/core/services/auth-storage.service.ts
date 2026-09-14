@@ -10,16 +10,15 @@ import { User } from '../models/auth.model';
 let SecureStoragePlugin:
   typeof import('capacitor-secure-storage-plugin').SecureStoragePlugin | null = null;
 
-if (Capacitor.isNativePlatform()) {
-  // Loaded lazily so that web tests don't fail on missing native implementation
-  import('capacitor-secure-storage-plugin')
-    .then((mod) => {
-      SecureStoragePlugin = mod.SecureStoragePlugin;
-    })
-    .catch(() => {
-      SecureStoragePlugin = null;
-    });
-}
+const pluginReady: Promise<void> = Capacitor.isNativePlatform()
+  ? import('capacitor-secure-storage-plugin')
+      .then((mod) => {
+        SecureStoragePlugin = mod.SecureStoragePlugin;
+      })
+      .catch(() => {
+        SecureStoragePlugin = null;
+      })
+  : Promise.resolve();
 
 @Injectable({
   providedIn: 'root',
@@ -76,6 +75,7 @@ export class AuthStorageService {
   // ---------- Private helpers ----------
 
   private async secureGet(key: string): Promise<string | null> {
+    await pluginReady;
     if (SecureStoragePlugin) {
       try {
         const result = await SecureStoragePlugin.get({ key });
@@ -90,6 +90,7 @@ export class AuthStorageService {
   }
 
   private async secureSet(key: string, value: string): Promise<void> {
+    await pluginReady;
     if (SecureStoragePlugin) {
       try {
         await SecureStoragePlugin.set({ key, value });
@@ -102,6 +103,7 @@ export class AuthStorageService {
   }
 
   private async secureRemove(key: string): Promise<void> {
+    await pluginReady;
     if (SecureStoragePlugin) {
       try {
         await SecureStoragePlugin.remove({ key });

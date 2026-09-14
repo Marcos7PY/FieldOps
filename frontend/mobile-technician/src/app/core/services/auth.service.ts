@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
-import { Observable, catchError, from, map, of, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, from, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RefreshTokenRequest, User } from '../models/auth.model';
 import { AuthStorageService } from './auth-storage.service';
@@ -16,6 +16,7 @@ export class AuthService {
   private readonly _currentUser = signal<User | null>(null);
   private readonly _accessToken = signal<string | null>(null);
   private readonly _initialized = signal<boolean>(false);
+  private refreshInProgress$: Observable<AuthResponse> | null = null;
 
   readonly currentUser = this._currentUser.asReadonly();
   readonly accessToken = this._accessToken.asReadonly();
@@ -71,7 +72,11 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AuthResponse> {
-    return from(this.storage.getRefreshToken()).pipe(
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
+
+    this.refreshInProgress$ = from(this.storage.getRefreshToken()).pipe(
       switchMap((refresh) => {
         if (!refresh) {
           this.clearLocalSession();
@@ -98,8 +103,14 @@ export class AuthService {
               return throwError(() => err);
             })
           );
-      })
+      }),
+      finalize(() => {
+        this.refreshInProgress$ = null;
+      }),
+      shareReplay(1)
     );
+
+    return this.refreshInProgress$;
   }
 
   private async refreshTokenPromise(refreshToken: string): Promise<AuthResponse | null> {

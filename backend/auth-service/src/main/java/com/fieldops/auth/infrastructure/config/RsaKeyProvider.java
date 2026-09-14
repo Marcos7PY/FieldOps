@@ -100,6 +100,15 @@ public class RsaKeyProvider implements InitializingBean {
                 "\n-----END PUBLIC KEY-----\n";
 
         Files.writeString(privFile, privPem);
+        try {
+            java.nio.file.attribute.PosixFileAttributeView view = Files.getFileAttributeView(
+                    privFile, java.nio.file.attribute.PosixFileAttributeView.class);
+            if (view != null) {
+                Files.setPosixFilePermissions(privFile, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+            }
+        } catch (UnsupportedOperationException | SecurityException ignored) {
+            // Non-POSIX filesystem (e.g. Windows NTFS)
+        }
         Files.writeString(pubFile, pubPem);
     }
 
