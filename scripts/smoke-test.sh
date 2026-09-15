@@ -85,7 +85,7 @@ if [ "$HTTP_CODE" -ne 201 ]; then
 fi
 
 ORDER_ID=$(echo "$BODY" | query_json '.id')
-ETAG=$(grep -i '^etag:' "$HEADERS_FILE" | tr -d '\r\n' | awk '{print $2}' | tr -d '"')
+ETAG=$( (grep -i '^etag:' "$HEADERS_FILE" || true) | tr -d '\r\n' | awk '{print $2}' | tr -d '"')
 rm -f "$HEADERS_FILE"
 
 if [ -z "$ORDER_ID" ] || [ "$ORDER_ID" = "null" ]; then
@@ -130,7 +130,7 @@ STATUS_RESP=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/work-orders
   -H "Authorization: Bearer $TECH_TOKEN" \
   -H "If-Match: \"$ORDER_VERSION\"" \
   -H "Content-Type: application/json" \
-  -d '{"status":"IN_PROGRESS","notes":"Iniciando trabajo en campo"}')
+  -d '{"newStatus":"IN_PROGRESS","notes":"Iniciando trabajo en campo"}')
 HTTP_CODE=$(echo "$STATUS_RESP" | tail -n1)
 BODY=$(echo "$STATUS_RESP" | sed '$d')
 
@@ -145,10 +145,11 @@ echo "[6/9] Subiendo evidencia fotográfica de 1px PNG..."
 TEMP_PNG=$(mktemp --suffix=.png)
 # 1x1 transparent PNG en base64
 echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 -d > "$TEMP_PNG"
+CURL_PNG="$(command -v cygpath >/dev/null && cygpath -w "$TEMP_PNG" || echo "$TEMP_PNG")"
 
 EVIDENCE_RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/work-orders/$ORDER_ID/evidence" \
   -H "Authorization: Bearer $TECH_TOKEN" \
-  -F "file=@$TEMP_PNG;type=image/png" \
+  -F "file=@$CURL_PNG;type=image/png" \
   -F "notes=Evidencia 1px prueba smoke")
 HTTP_CODE=$(echo "$EVIDENCE_RESP" | tail -n1)
 BODY=$(echo "$EVIDENCE_RESP" | sed '$d')
@@ -164,7 +165,7 @@ COMP_RESP=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/api/v1/work-orders/$
   -H "Authorization: Bearer $TECH_TOKEN" \
   -H "If-Match: \"$ORDER_VERSION\"" \
   -H "Content-Type: application/json" \
-  -d '{"status":"COMPLETED","notes":"Trabajo finalizado con éxito"}')
+  -d '{"newStatus":"COMPLETED","notes":"Trabajo finalizado con éxito"}')
 HTTP_CODE=$(echo "$COMP_RESP" | tail -n1)
 BODY=$(echo "$COMP_RESP" | sed '$d')
 
@@ -199,7 +200,7 @@ if [ "$HTTP_CODE" -ne 200 ]; then
   fail "9" "HTTP code esperado 200 en GET /api/v1/analytics/metrics/daily pero se recibió $HTTP_CODE" "$BODY"
 fi
 
-TOTAL_METRIC_COUNT=$(echo "$BODY" | query_json 'if type=="array" then [.[].orderCount // 0] | add else .orderCount // 0 end')
+TOTAL_METRIC_COUNT=$(echo "$BODY" | query_json 'if .totalOrders != null then .totalOrders elif type=="array" then [.[].orderCount // 0] | add elif .metrics != null then [.metrics[].orderCount // 0] | add else .orderCount // 0 end')
 if [ -z "$TOTAL_METRIC_COUNT" ] || [ "$TOTAL_METRIC_COUNT" -lt 1 ]; then
   fail "9" "Conteo de métricas diarias menor a 1" "$BODY"
 fi

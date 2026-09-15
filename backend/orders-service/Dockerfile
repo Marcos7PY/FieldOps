@@ -8,7 +8,7 @@ RUN mvn -B clean package -DskipTests
 RUN java -Djarmode=layertools -jar target/*.jar extract --destination extracted
 
 FROM eclipse-temurin:21-jre-alpine
-RUN apk add --no-cache gcompat && addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache libc6-compat gcompat && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /build/backend/orders-service/extracted/dependencies/ ./
 COPY --from=build /build/backend/orders-service/extracted/spring-boot-loader/ ./

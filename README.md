@@ -91,14 +91,16 @@ donde `to` es exclusivo). La versión preliminar ejecutaba escaneos completos de
 
 La optimización sustituyó las expresiones funcionales por rangos semiabiertos, introdujo un índice compuesto cubriente con `INCLUDE` y un índice filtrado excluyendo órdenes canceladas. Paralelamente, se implementó la proyección pre-agregada CQRS en `analytics-service`.
 
-| Indicador | Consulta inicial | Consulta optimizada SQL | Proyección CQRS |
+| Indicador | Consulta inicial (sin índice) | Consulta optimizada SQL | Proyección CQRS |
 |---|---|---|---|
-| Operación en plan de ejecución | Clustered Index Scan | Index Seek (cubriente) | Primary Key Seek |
-| Lecturas lógicas (páginas de 8 KB) | 32.450 páginas | 88 páginas | 4 páginas |
-| Latencia mediana (p50) | 2.650 ms | 16,8 ms | 4,2 ms |
-| Latencia percentil 99 (p99) | 3.120 ms | 28,4 ms | 7,1 ms |
-| Memoria JVM consumida | ~280 MB | < 1 KB | < 1 KB |
-| Factor de aceleración | 1x (referencia) | 157x | 630x |
+| Operación en plan de ejecución | Clustered Index Scan | Index Seek (cubriente) | Clustered Index Scan (tabla agregada) |
+| Lecturas lógicas (páginas de 8 KB) | 24.008 páginas (187,5 MB) | 449 páginas (3,5 MB) | 2 páginas (< 16 KB) |
+| Latencia mediana (p50) | 51 ms | 9 ms | 12 ms |
+| Latencia percentil 95 (p95) | 69 ms | 26 ms | 28 ms |
+| Factor de aceleración | 1x (referencia) | 5,6x (53x en E/S) | 4,2x (12.000x en E/S) |
+
+> Medido el 14 de septiembre de 2026 sobre 500.000 órdenes en SQL Server 2022 (contenedor local, 4 vCPU / 8 GB).
+> Reproducible con `scripts/seed-performance-data.sql` + `scripts/benchmark-metrics.sh`.
 
 El detalle técnico completo de los planes de ejecución y estadísticas de E/S se encuentra documentado en [docs/performance/optimizacion-consultas.md](docs/performance/optimizacion-consultas.md).
 

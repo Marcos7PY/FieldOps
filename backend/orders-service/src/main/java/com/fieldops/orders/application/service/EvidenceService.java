@@ -1,5 +1,6 @@
 package com.fieldops.orders.application.service;
 
+import com.fieldops.orders.application.dto.EvidenceContent;
 import com.fieldops.orders.application.dto.EvidenceMetadata;
 import com.fieldops.orders.application.dto.EvidenceResponse;
 import com.fieldops.orders.domain.exception.AccessDeniedException;
@@ -12,9 +13,6 @@ import com.fieldops.orders.infrastructure.persistence.WorkOrderEvidenceRepositor
 import com.fieldops.orders.infrastructure.persistence.WorkOrderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -151,7 +149,7 @@ public class EvidenceService {
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<Resource> loadEvidenceContent(Long workOrderId, Long evidenceId, Long userId, boolean isSupervisor) {
+    public EvidenceContent loadEvidenceContent(Long workOrderId, Long evidenceId, Long userId, boolean isSupervisor) {
         WorkOrder order = workOrderRepository.findById(workOrderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Work order not found with id: " + workOrderId));
 
@@ -176,14 +174,12 @@ public class EvidenceService {
             throw new ResourceNotFoundException("File not found: " + evidence.getFilePath());
         }
 
-        Resource resource = new FileSystemResource(filePath);
         String contentType = evidence.getContentType() != null ? evidence.getContentType() : "application/octet-stream";
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, contentType)
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filePath.getFileName().toString() + "\"")
-                .body(resource);
+        return new EvidenceContent(
+                new FileSystemResource(filePath),
+                contentType,
+                filePath.getFileName().toString());
     }
 
     private void validateFile(MultipartFile file) {

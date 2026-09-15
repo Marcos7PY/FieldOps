@@ -22,6 +22,9 @@ public class KafkaProducerConfig {
     @Value("${spring.kafka.properties.schema.registry.url:http://localhost:8090}")
     private String schemaRegistryUrl;
 
+    @Value("${spring.kafka.producer.compression-type:none}")
+    private String compressionType;
+
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
@@ -34,7 +37,7 @@ public class KafkaProducerConfig {
         configProps.put(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
         configProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 10000);
         configProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000);
-        configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compressionType);
         configProps.put("schema.registry.url", schemaRegistryUrl);
 
         return new DefaultKafkaProducerFactory<>(configProps);

@@ -3,6 +3,7 @@ package com.fieldops.orders.api.controller;
 import com.fieldops.orders.application.dto.AssignWorkOrderRequest;
 import com.fieldops.orders.application.dto.ChangeStatusRequest;
 import com.fieldops.orders.application.dto.CreateWorkOrderRequest;
+import com.fieldops.orders.application.dto.EvidenceContent;
 import com.fieldops.orders.application.dto.EvidenceMetadata;
 import com.fieldops.orders.application.dto.EvidenceResponse;
 import com.fieldops.orders.application.dto.PageResponse;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -208,7 +210,15 @@ public class WorkOrderController {
     ) {
         Long userId = requireCurrentUserId();
         boolean isSupervisor = currentUserProvider.isSupervisor();
-        return evidenceService.loadEvidenceContent(id, evidenceId, userId, isSupervisor);
+        EvidenceContent content = evidenceService.loadEvidenceContent(id, evidenceId, userId, isSupervisor);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, content.contentType())
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + content.fileName() + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; sandbox")
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=3600")
+                .body(content.resource());
     }
 
     private Long parseVersion(String ifMatch) {

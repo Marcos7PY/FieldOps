@@ -53,16 +53,19 @@ El análisis del plan de ejecución antes de la intervención reveló los siguie
 
 La intervención se estructuró en tres acciones concretas:
 
-### 3.1 Índices especializados (`V4__performance_indexes.sql` y `V5__metrics_covering_index.sql`)
-Se añadieron índices optimizados en la base de datos `fieldops_orders`:
-- Un índice compuesto no agrupado sobre `(status, scheduled_at)` con cláusula `INCLUDE (assigned_technician_id, completed_at)`. Al contener todas las columnas requeridas en el nivel hoja, funciona como índice cubriente (*covering index*) y elimina las búsquedas de marcador (*Key Lookups*).
-- Un índice filtrado excluyendo `CANCELLED` (`WHERE status <> 'CANCELLED'`). Las órdenes canceladas representan el 15% de la tabla y nunca participan en los informes de productividad ni cálculo de tiempos de servicio. Este filtro redujo el tamaño del árbol B y su ocupación en memoria.
-- Un índice cubriente para duración de completadas sobre `(completed_at)` con `INCLUDE (started_at)` filtrado por `WHERE status = 'COMPLETED'`.
+### 3.1 Índices especializados (`V5__metrics_covering_index.sql`, `V6__add_created_at_index.sql`, `V9__align_metrics_indexes.sql`)
+Se añadieron tres índices en la base de datos `fieldops_orders`, cada uno atado a una consulta concreta del código:
+
+- **`ix_work_order_created_at`** sobre `(created_at DESC)` con `INCLUDE (status, priority, started_at, completed_at)`. Es el índice que sirve a `findMetricsInRange` y al listado paginado por defecto. Al contener en el nivel hoja todas las columnas que la agregación condicional necesita, funciona como índice cubriente (*covering index*) y elimina las búsquedas de marcador (*Key Lookups*).
+- **`ix_work_order_completed_duration`** sobre `(completed_at)` con `INCLUDE (started_at)` y filtro `WHERE status = 'COMPLETED'`. Sirve al cálculo de duración media. El filtro reduce el árbol B a la fracción de filas que participan en el cálculo.
+- **`ix_work_order_status`**, estrecho, para los `GROUP BY status` sin filtro del endpoint agregado global.
+
+Una versión anterior (`V4__performance_indexes.sql`) indexaba `(status, scheduled_at)` partiendo de un diseño en el que el rango se aplicaba sobre la fecha programada. Al consolidarse el filtro sobre `created_at`, esos dos índices dejaron de ser utilizables por el plan y se retiraron en `V9`. Se retiraron con una migración nueva, sin editar `V4`, para no alterar el checksum de una migración ya aplicada.
 
 ### 3.2 Reescritura sargable y agregación en base de datos
 Se eliminó la función `CAST` sobre la columna de fecha, adoptando un intervalo semiabierto sobre el valor limpio:
 ```sql
-WHERE scheduled_at >= @from_datetime AND scheduled_at < @to_exclusive_datetime
+WHERE created_at >= @from_datetime AND created_at < @to_exclusive_datetime
 ```
 Las subconsultas correlacionadas se sustituyeron por agregación condicional en una única pasada (`single-pass conditional aggregation`):
 ```sql
@@ -82,11 +85,11 @@ SELECT
              AND started_at IS NOT NULL 
              AND completed_at IS NOT NULL 
              AND completed_at >= started_at 
-        THEN CAST(DATEDIFF(minute, started_at, completed_at) AS DECIMAL(10,2))
+        THEN CAST(DATEDIFF(minute, started_at, completed_at) AS DECIMAL(18,4))
         ELSE NULL 
-    END) AS DECIMAL(10,2)) AS avg_duration_minutes
+    END) AS DECIMAL(18,4)) AS avg_duration_minutes
 FROM work_order
-WHERE scheduled_at >= @from_datetime AND scheduled_at < @to_exclusive_datetime;
+WHERE created_at >= @from_datetime AND created_at < @to_exclusive_datetime;
 ```
 
 ### 3.3 Eliminación del N+1 con `@EntityGraph`
@@ -95,7 +98,7 @@ En `WorkOrderRepository`, se sobrescribió el método `findAll` decorándolo con
 ## 4. Plan de ejecución final
 
 Con las modificaciones aplicadas, el plan de ejecución de SQL Server cambió drásticamente:
-- El operador inicial es un `Index Seek` sobre el índice `ix_work_order_status_scheduled_inc`.
+- El operador inicial es un `Index Seek` sobre el índice `ix_work_order_created_at`.
 - Se leen exclusivamente las 62.500 filas del rango temporal solicitado sin tocar el índice clustered.
 - Un operador `Stream Aggregate` resuelve los conteos condicionales y el promedio de duración en memoria del motor relacional.
 - Se envía un único registro con el resumen hacia Java.

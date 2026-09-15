@@ -17,6 +17,7 @@ Se decide renumerar la secuencia de migraciones de `orders-service` para restabl
 1. **Renombrado a V4:** `V5__performance_indexes.sql` pasa a ser `V4__performance_indexes.sql`, incluyendo un comentario explicativo en el script para trazabilidad histórica.
 2. **Asignación de V5:** El nuevo índice cubriente para agregación de métricas de rendimiento (`ix_work_order_completed_duration`) se establece en `V5__metrics_covering_index.sql`.
 3. **Regla de contigüidad:** Todas las migraciones futuras en los servicios de FieldOps deben mantener numeración consecutiva estricta (`V1`, `V2`, `V3`, `V4`, `V5`...). No se admiten versiones salteadas. En caso de retirar una migración en entornos productivos ya desplegados, se utilizará una migración compensatoria explícita en lugar de eliminar o saltear versiones.
+4. **Evolución y desestimación de índices (V9):** En consonancia con la regla 3, cuando en fases posteriores los índices creados en `V4` requirieron ser desestimados para alinearse con los filtros reales sobre `created_at`, se optó por la migración compensatoria `V9__align_metrics_indexes.sql` en lugar de retro-modificar `V4` o `V6`, protegiendo de forma estricta los checksums ya inmutables.
 
 ## Consecuencias
 

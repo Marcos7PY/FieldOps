@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
@@ -35,4 +36,11 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
                      @Param("error") String error,
                      @Param("maxAttempts") int maxAttempts,
                      @Param("now") LocalDateTime now);
+
+    @Query("SELECT DISTINCT e.aggregateId FROM OutboxEvent e WHERE e.deadLetteredAt IS NOT NULL")
+    Set<Long> findQuarantinedAggregateIds();
+
+    long countByDeadLetteredAtIsNotNull();
+
+    long countByPublishedAtIsNullAndDeadLetteredAtIsNull();
 }

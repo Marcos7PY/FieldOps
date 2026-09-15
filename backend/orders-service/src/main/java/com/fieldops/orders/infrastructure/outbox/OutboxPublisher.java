@@ -46,7 +46,10 @@ public class OutboxPublisher {
 
         log.debug("Processing {} pending outbox events", pendingEvents.size());
 
-        java.util.Set<Long> blockedAggregates = new java.util.HashSet<>();
+        // Una orden con algun evento en dead-letter queda en cuarentena: publicar los
+        // siguientes dejaria un hueco en su secuencia. Requiere intervencion manual.
+        java.util.Set<Long> blockedAggregates =
+                new java.util.HashSet<>(outboxEventRepository.findQuarantinedAggregateIds());
         for (OutboxEvent event : pendingEvents) {
             if (event.getAggregateId() != null && blockedAggregates.contains(event.getAggregateId())) {
                 continue;

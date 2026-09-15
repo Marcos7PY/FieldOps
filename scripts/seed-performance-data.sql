@@ -1,7 +1,12 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 USE fieldops_orders;
+GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 GO
 
 IF (SELECT COUNT(*) FROM client) < 300
@@ -64,6 +69,9 @@ BEGIN
           );
     END
 END
+GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 GO
 
 DECLARE @TargetOrders INT = 500000;
@@ -141,7 +149,7 @@ BEGIN
                 END AS prio,
                 (((@BatchOffset + row_num) % @ClientCount) + 1) AS client_seq,
                 (((@BatchOffset + row_num) % 20) + 2) AS tech_candidate,
-                DATEADD(SECOND, ((@BatchOffset + row_num) % (730 * 86400)), @BaseDate) AS ord_created_at,
+                DATEADD(SECOND, CAST((@BatchOffset + row_num) * 126.144 AS INT), @BaseDate) AS ord_created_at,
                 row_num
             FROM Tally
         ),

@@ -201,4 +201,45 @@ class OutboxPublisherIntegrationTest extends AbstractIntegrationTest {
         OutboxEvent reloaded = outboxEventRepository.findById(failingEvent.getId()).orElseThrow();
         assertThat(reloaded.getAttemptCount()).isEqualTo(10);
     }
+
+    @Test
+    @DisplayName("Caso 4: Un agregado con evento en dead letter permanece en cuarentena; el posterior no se publica y otra orden si")
+    void shouldQuarantineAggregateWithDeadLetteredEvent() {
+        LocalDateTime baseTime = LocalDateTime.now().minusHours(1);
+        Long quarantinedOrderId = 5001L;
+        Long normalOrderId = 6001L;
+
+        // Evento 1 de quarantinedOrderId: ya en dead letter
+        OutboxEvent deadLetterEvent = new OutboxEvent(
+                UUID.randomUUID().toString(),
+                quarantinedOrderId,
+                "ORDER_CREATED",
+                "{corrupt_payload",
+                baseTime
+        );
+        deadLetterEvent.setAttemptCount(10);
+        deadLetterEvent.setDeadLetteredAt(LocalDateTime.now().minusMinutes(10));
+        outboxEventRepository.save(deadLetterEvent);
+
+        // Evento 2 de quarantinedOrderId: evento válido posterior
+        OutboxEvent subsequentEvent = outboxEventRepository.save(
+                createValidOutboxEvent(quarantinedOrderId, "Valid Subsequent Event", baseTime.plusMinutes(5))
+        );
+
+        // Evento de normalOrderId: debe publicarse con éxito
+        OutboxEvent normalEvent = outboxEventRepository.save(
+                createValidOutboxEvent(normalOrderId, "Normal Event", baseTime.plusMinutes(2))
+        );
+
+        outboxPublisher.publishPendingEvents();
+
+        // El evento posterior del agregado en cuarentena NO debe publicarse
+        OutboxEvent reloadedSubsequent = outboxEventRepository.findById(subsequentEvent.getId()).orElseThrow();
+        assertThat(reloadedSubsequent.getPublishedAt()).isNull();
+        assertThat(reloadedSubsequent.getAttemptCount()).isEqualTo(0);
+
+        // El evento de la orden normal SI debe publicarse
+        OutboxEvent reloadedNormal = outboxEventRepository.findById(normalEvent.getId()).orElseThrow();
+        assertThat(reloadedNormal.getPublishedAt()).isNotNull();
+    }
 }

@@ -225,14 +225,62 @@ class SecurityAuthorizationTest extends AbstractIntegrationTest {
     @Test
     void f2t10_uploadsHeadersAndAuthentication() throws Exception {
         // Sin token -> 401
-        mockMvc.perform(get("/uploads/test.png"))
+        mockMvc.perform(get("/api/v1/work-orders/1/evidence/1/content"))
                 .andExpect(status().isUnauthorized());
 
-        // Con token -> cabeceras de seguridad requeridas por F2-T10
-        mockMvc.perform(get("/uploads/test.png")
+        CreateClientRequest clientReq = new CreateClientRequest(
+                "Evidence Header Client", "TAX-EV-HDR-01", null, null, null, null);
+        MvcResult cr = mockMvc.perform(post("/api/v1/clients")
+                        .with(supervisor(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(clientReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long clientId = objectMapper.readTree(cr.getResponse().getContentAsString()).get("id").asLong();
+
+        CreateWorkOrderRequest orderReq = new CreateWorkOrderRequest(
+                "Evidence Header Order", "Desc", Priority.LOW, clientId, null, null);
+        MvcResult or = mockMvc.perform(post("/api/v1/work-orders")
+                        .with(supervisor(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long orderId = objectMapper.readTree(or.getResponse().getContentAsString()).get("id").asLong();
+        long version = objectMapper.readTree(or.getResponse().getContentAsString()).get("version").asLong();
+
+        AssignWorkOrderRequest assignReq = new AssignWorkOrderRequest(100L, LocalDateTime.now().plusDays(1));
+        mockMvc.perform(patch("/api/v1/work-orders/{id}/assign", orderId)
+                        .with(supervisor(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("If-Match", "\"" + version + "\"")
+                        .content(objectMapper.writeValueAsString(assignReq)))
+                .andExpect(status().isOk());
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "test.jpg",
+                "image/jpeg",
+                new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 16, 'J', 'F', 'I', 'F', 0, 1}
+        );
+
+        MvcResult evResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .multipart("/api/v1/work-orders/{id}/evidence", orderId)
+                        .file(file)
+                        .with(technician(100L))
+                        .header("X-User-Id", 100)
+                        .header("X-User-Role", "ROLE_TECHNICIAN"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long evidenceId = objectMapper.readTree(evResult.getResponse().getContentAsString()).get("id").asLong();
+
+        // Con token -> cabeceras de seguridad requeridas en getEvidenceContent (F2-T10, J3.1, J5.3)
+        mockMvc.perform(get("/api/v1/work-orders/{id}/evidence/{evidenceId}/content", orderId, evidenceId)
                         .with(supervisor(1L)))
+                .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Content-Type-Options", "nosniff"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Disposition", "attachment"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Disposition", org.hamcrest.Matchers.containsString("inline; filename=")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Security-Policy", "default-src 'none'; sandbox"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Cache-Control", "private, max-age=3600"));
     }

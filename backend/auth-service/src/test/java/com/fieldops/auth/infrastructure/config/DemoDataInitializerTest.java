@@ -1,5 +1,6 @@
 package com.fieldops.auth.infrastructure.config;
 
+import com.fieldops.auth.AbstractIntegrationTest;
 import com.fieldops.auth.domain.model.User;
 import com.fieldops.auth.infrastructure.persistence.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -7,7 +8,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -21,10 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class DemoDataInitializerTest {
 
     @Nested
-    @SpringBootTest
     @ActiveProfiles("test")
     @TestPropertySource(properties = "fieldops.demo-data.enabled=true")
-    class WhenDemoDataEnabled {
+    class WhenDemoDataEnabled extends AbstractIntegrationTest {
 
         @Autowired
         private UserRepository userRepository;
@@ -59,10 +58,9 @@ class DemoDataInitializerTest {
     }
 
     @Nested
-    @SpringBootTest
     @ActiveProfiles("test")
     @TestPropertySource(properties = "fieldops.demo-data.enabled=false")
-    class WhenDemoDataDisabled {
+    class WhenDemoDataDisabled extends AbstractIntegrationTest {
 
         @Autowired
         private ApplicationContext context;

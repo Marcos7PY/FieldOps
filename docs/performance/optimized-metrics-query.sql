@@ -52,7 +52,7 @@ GO
 -- ============================================================================
 -- 4. Consulta analítica condicional por rango de fechas (ejemplo de reporte)
 -- Reescritura 100% sargable con agregación condicional en una sola pasada
--- Apoyada por: ix_work_order_status_scheduled_inc (V4__performance_indexes.sql)
+-- Apoyada por: ix_work_order_created_at (V9__align_metrics_indexes.sql)
 -- ============================================================================
 
 DECLARE @from_datetime DATETIME2 = '2026-01-01 00:00:00';
@@ -74,12 +74,12 @@ SELECT
              AND started_at IS NOT NULL 
              AND completed_at IS NOT NULL 
              AND completed_at >= started_at 
-        THEN CAST(DATEDIFF(minute, started_at, completed_at) AS DECIMAL(10,2))
+        THEN CAST(DATEDIFF(minute, started_at, completed_at) AS DECIMAL(18,4))
         ELSE NULL 
-    END) AS DECIMAL(10,2)) AS avg_duration_minutes
+    END) AS DECIMAL(18,4)) AS avg_duration_minutes
 FROM work_order
-WHERE scheduled_at >= @from_datetime 
-  AND scheduled_at < @to_exclusive_datetime;
+WHERE created_at >= @from_datetime 
+  AND created_at < @to_exclusive_datetime;
 GO
 
 SET STATISTICS IO OFF;

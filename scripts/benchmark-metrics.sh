@@ -19,6 +19,12 @@ if [ -z "$TOKEN" ]; then
     TOKEN=$(echo "$AUTH_RESP" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 fi
 
+if [ -z "$TOKEN" ]; then
+    echo "ERROR: no se pudo obtener el token de autenticación. Respuesta:"
+    echo "$AUTH_RESP"
+    exit 1
+fi
+
 echo "Iniciando benchmark (50 peticiones por endpoint)..."
 echo "--------------------------------------------------------"
 
@@ -57,5 +63,8 @@ run_benchmark() {
     echo "--------------------------------------------------------"
 }
 
-run_benchmark "/api/v1/work-orders/metrics" "SQL Optimizado (Transaccional)"
+FROM_DATE="${FROM_DATE:-2026-01-01T00:00:00}"
+TO_DATE="${TO_DATE:-2026-04-01T00:00:00}"
+
+run_benchmark "/api/v1/work-orders/metrics/range?from=${FROM_DATE}&to=${TO_DATE}" "SQL Optimizado (Transaccional)"
 run_benchmark "/api/v1/analytics/metrics/daily" "Proyección de Eventos (Read Model CQRS)"
