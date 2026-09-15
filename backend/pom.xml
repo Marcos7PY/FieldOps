@@ -27,6 +27,7 @@
         <netty.version>4.1.138.Final</netty.version>
         <thymeleaf.version>3.1.5.RELEASE</thymeleaf.version>
         <failBuildOnCVSS>9</failBuildOnCVSS>
+        <nvd.api.key></nvd.api.key>
         <avro.version>1.12.0</avro.version>
         <confluent.version>7.6.1</confluent.version>
         <shedlock.version>5.16.0</shedlock.version>
@@ -209,7 +210,7 @@
                 <version>10.0.4</version>
                 <configuration>
                     <failBuildOnCVSS>${failBuildOnCVSS}</failBuildOnCVSS>
-                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+                    <nvdApiKey>${nvd.api.key}</nvdApiKey>
                     <!-- OSS Index requiere credenciales para superar el limite de peticiones
                          anonimas en CI. El analizador NVD sigue activo y es el que aplica
                          failBuildOnCVSS. Reactivar cuando se configuren OSSINDEX_USER/TOKEN. -->

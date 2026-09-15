@@ -50,7 +50,7 @@ definitions:
           - maven
         script:
           - cd backend
-          - mvn -B dependency-check:check
+          - mvn -B dependency-check:check -Dnvd.api.key=$NVD_API_KEY
         artifacts:
           - "**/target/dependency-check-report.html"
 
