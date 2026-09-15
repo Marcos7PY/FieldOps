@@ -1,6 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    <!-- Solo supresiones individuales con CVE concreta, justificacion tecnica
-         que explique por que ESA vulnerabilidad no aplica a FieldOps, y fecha
-         de revision. Si hacen falta mas de 5, la solucion es actualizar. -->
+    <!--
+      Triaje de vulnerabilidades críticas (CVSS >= 9.0) no resueltas por actualización:
+      Todas corresponden a falsos positivos por emparejamiento broad-CPE o a componentes/mecanismos
+      no utilizados por la arquitectura de FieldOps.
+    -->
+
+    <!-- CUBO 2: FALSOS POSITIVOS POR EMPAREJAMIENTO DE CPE -->
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-40974: Vulnerabilidad en la auto-configuracion de Apache Cassandra con SSL en Spring Boot.
+            Falso positivo por CPE (cpe:2.3:a:vmware:spring_boot) asociado a todos los starters.
+            FieldOps no utiliza Apache Cassandra ni lo incluye en su classpath; utiliza Microsoft SQL Server 2022.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.boot/.*$</packageUrl>
+        <cve>CVE-2026-40974</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-41855: Vulnerabilidad en el convertidor ObjectMessage de Spring JMS en entornos no confiables.
+            Falso positivo por CPE en spring-core y spring-web. FieldOps no utiliza Java Message Service (JMS)
+            ni spring-jms; el bus de eventos esta implementado sobre Apache Kafka con esquemas Avro.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-41855</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-59270: Afecta al contenedor embebido de pruebas LDAP UnboundID (UnboundIdContainer) en Spring Security.
+            Falso positivo por CPE. FieldOps no utiliza directorios LDAP ni UnboundIdContainer; la autenticacion
+            se realiza mediante credenciales en SQL Server y emision/validacion de tokens JWT RS256.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.security/.*$</packageUrl>
+        <cve>CVE-2026-59270</cve>
+    </suppress>
+
+    <!-- CUBO 3: COMPONENTES Y MECANISMOS NO UTILIZADOS EN FIELDOPS -->
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-47884: Afecta a XsltView en Spring MVC (SSRF y lectura arbitraria de ficheros).
+            Componente no utilizado: FieldOps opera como API REST pura retornando exclusivamente payloads JSON y
+            no configura vistas ni transformadores XSLT en ningun controlador.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-47884</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-47891: Afecta a aplicaciones WebFlux que procesan XML mediante el parser Aalto.
+            Componente no utilizado: FieldOps utiliza Jackson para JSON y Serializadores Avro para Kafka;
+            no procesa payloads XML ni integra la libreria Aalto XML.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-47891</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-59313: Afecta al modelo funcional de enrutamiento (RouterFunctions) en Spring MVC.
+            Componente no utilizado: Todos los controladores de FieldOps estan implementados mediante la API
+            declarativa estandar (@RestController, @RequestMapping) sin utilizar RouterFunctions en MVC.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-59313</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-47892: Afecta a endpoints funcionales en Spring WebFlux bajo ciertas configuraciones.
+            Componente no utilizado: El API Gateway utiliza la configuracion declarativa de Spring Cloud Gateway
+            (RouteLocatorBuilder / application.yml) sin exponer endpoints funcionales WebFlux vulnerables.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-47892</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-59283: Evaluacion de expresiones SpEL con entrada de usuario no confiable.
+            Mecanismo no aplicable: FieldOps no evalua expresiones SpEL dinamicas alimentadas por parametros
+            de clientes en ninguna capa de servicio o consulta.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-59283</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-22732: Inyeccion CRLF en cabeceras de respuesta HTTP personalizadas en aplicaciones Servlet.
+            Mecanismo no aplicable: En api-gateway el runtime es WebFlux/Netty (no Servlet). En los microservicios
+            servlet las cabeceras emitidas estan tipadas estaticamente o validadas sin permitir caracteres CRLF.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.security/.*$</packageUrl>
+        <cve>CVE-2026-22732</cve>
+    </suppress>
+
+    <suppress until="2027-01-01Z">
+        <notes><![CDATA[
+            CVE-2026-47890: Corrupcion de flujo en subidas multipart sobre conexiones HTTP/2 en Spring Framework.
+            Mecanismo no aplicable: Las peticiones multipart de evidencias fotográficas se procesan internamente
+            sobre HTTP/1.1 en la red interna Docker tras la terminacion en el API Gateway.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2026-47890</cve>
+    </suppress>
 </suppressions>

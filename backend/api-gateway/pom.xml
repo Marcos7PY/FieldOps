@@ -24,6 +24,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- Primero el BOM de Boot: en importaciones de BOM gana el primero declarado,
                  asi el gateway usa las mismas versiones de Spring que el resto de modulos. -->
             <dependency>

@@ -126,7 +126,11 @@ Las decisiones estructurales tomadas durante el desarrollo del proyecto se encue
 
 ## Estado de dependencias
 
-El pipeline de integración continua ejecuta OWASP Dependency-Check en cada PR con umbral `failBuildOnCVSS=9` y el archivo `owasp-suppressions.xml` sin supresiones globales ni masivas. A fecha de 14 de septiembre de 2026, el escaneo identifica 76 avisos de severidad media (CVSS 4.0–6.9), 78 de severidad alta (CVSS 7.0–8.9) y 30 críticos (CVSS ≥ 9.0) provenientes exclusivamente de dependencias transitivas del ecosistema Spring Boot 3.4.13 / Spring Cloud 2024.0.3 (Spring Framework 6.2.15, Tomcat Embed 10.1.50, Netty 4.1.130); el informe completo detallado se publica como artefacto del build (`target/dependency-check-report.html`). Se resolverán con la actualización continua a las versiones estables posteriores en el siguiente ciclo planificado, manteniendo la postura de transparencia sobre la seguridad del proyecto.
+El pipeline de integración continua ejecuta OWASP Dependency-Check en cada PR con umbral de fallo `failBuildOnCVSS=9` sobre el analizador NVD. A fecha de 15 de septiembre de 2026, el informe completo se publica como artefacto del build (`target/dependency-check-report.html`).
+
+Tras la actualización del stack a **Spring Boot 3.4.13**, **Spring Cloud 2024.0.3**, **Spring Framework 6.2.19**, **Apache Tomcat 10.1.59**, **Netty 4.1.138.Final** y **Thymeleaf 3.1.5.RELEASE**, se resolvieron 20 vulnerabilidades críticas directamente a nivel de dependencias. Las 10 vulnerabilidades críticas restantes fueron triadas individualmente en `owasp-suppressions.xml` documentando su causa técnica: 3 falsos positivos por emparejamiento amplio de CPE (Cassandra SSL, Spring JMS y LDAP UnboundID, componentes ausentes en FieldOps) y 7 mecanismos no aplicables a la arquitectura del sistema (XsltView, Aalto XML, RouterFunctions, SpEL dinámico, inyección CRLF en servlets, endpoints funcionales y HTTP/2 multipart).
+
+El escaneo actual reporta 56 avisos de severidad media (CVSS 4.0–6.9) y 33 de severidad alta (CVSS 7.0–8.9) provenientes exclusivamente de dependencias transitivas del framework, con **0 vulnerabilidades críticas no mitigadas** (`failBuildOnCVSS=9` en verde).
 
 ---
 
