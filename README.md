@@ -126,7 +126,7 @@ Las decisiones estructurales tomadas durante el desarrollo del proyecto se encue
 
 ## Estado de dependencias
 
-El pipeline de integración continua ejecuta OWASP Dependency-Check en cada PR con umbral `failBuildOnCVSS=9` y el archivo `owasp-suppressions.xml` sin supresiones globales ni masivas. A fecha de 14 de septiembre de 2026, el proyecto arrastra avisos provenientes de dependencias transitivas del ecosistema Spring Boot 3.4.13 / Spring Cloud 2024.0.3; el informe completo se publica como artefacto del build (`target/dependency-check-report.html`). Se resolverán con la actualización continua a las versiones estables posteriores en el siguiente ciclo planificado.
+El pipeline de integración continua ejecuta OWASP Dependency-Check en cada PR con umbral `failBuildOnCVSS=9` y el archivo `owasp-suppressions.xml` sin supresiones globales ni masivas. A fecha de 14 de septiembre de 2026, el escaneo identifica 76 avisos de severidad media (CVSS 4.0–6.9), 78 de severidad alta (CVSS 7.0–8.9) y 30 críticos (CVSS ≥ 9.0) provenientes exclusivamente de dependencias transitivas del ecosistema Spring Boot 3.4.13 / Spring Cloud 2024.0.3 (Spring Framework 6.2.15, Tomcat Embed 10.1.50, Netty 4.1.130); el informe completo detallado se publica como artefacto del build (`target/dependency-check-report.html`). Se resolverán con la actualización continua a las versiones estables posteriores en el siguiente ciclo planificado, manteniendo la postura de transparencia sobre la seguridad del proyecto.
 
 ---
 

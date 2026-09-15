@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -19,7 +19,7 @@ class CorsGatewayTest {
     @Autowired
     private WebTestClient webTestClient;
 
-    @MockBean
+    @MockitoBean
     private ReactiveJwtDecoder reactiveJwtDecoder;
 
     @Test

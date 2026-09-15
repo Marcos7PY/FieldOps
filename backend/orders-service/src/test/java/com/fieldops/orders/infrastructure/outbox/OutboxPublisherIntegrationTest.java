@@ -60,7 +60,7 @@ class OutboxPublisherIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private WorkOrderEventSerializer serializer;
 
-    @org.springframework.boot.test.mock.mockito.MockBean
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
     private net.javacrumbs.shedlock.core.LockProvider lockProvider;
 
     @BeforeEach
