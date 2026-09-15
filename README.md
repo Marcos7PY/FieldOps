@@ -89,7 +89,7 @@ Durante las pruebas de carga sobre un volumen de 500.000 órdenes de trabajo y m
 (`GET /api/v1/work-orders/metrics/range?from=2026-01-01T00:00:00&to=2026-04-01T00:00:00`,
 donde `to` es exclusivo). La versión preliminar ejecutaba escaneos completos de tabla debido a funciones no sargables sobre columnas de fecha y subconsultas correlacionadas.
 
-La optimización sustituyó las expresiones funcionales por rangos semiabiertos, introdujo un índice compuesto cubriente con `INCLUDE` y un índice filtrado excluyendo órdenes canceladas. Paralelamente, se implementó la proyección pre-agregada CQRS en `analytics-service`.
+La optimización sustituyó las expresiones funcionales por rangos semiabiertos sobre `created_at` y las subconsultas correlacionadas por agregación condicional en una sola pasada, apoyada en un índice cubriente con `INCLUDE`. Paralelamente se implementó la proyección pre-agregada CQRS en `analytics-service`. La columna «Consulta inicial» de la tabla mide la consulta ya reescrita pero sin el índice cubriente, para aislar su aportación; el rediseño de la consulta se documenta aparte en [docs/performance/optimizacion-consultas.md](docs/performance/optimizacion-consultas.md).
 
 | Indicador | Consulta inicial (sin índice) | Consulta optimizada SQL | Proyección CQRS |
 |---|---|---|---|
@@ -101,6 +101,8 @@ La optimización sustituyó las expresiones funcionales por rangos semiabiertos,
 
 > Medido el 14 de septiembre de 2026 sobre 500.000 órdenes en SQL Server 2022 (contenedor local, 4 vCPU / 8 GB).
 > Reproducible con `scripts/seed-performance-data.sql` + `scripts/benchmark-metrics.sh`.
+>
+> A este volumen el índice cubriente ya resuelve la consulta transaccional en 449 páginas, así que la ventaja de la proyección no está en la latencia sino en su coste de E/S constante: 2 páginas independientemente del número de órdenes. La consulta SQL crece de forma lineal con el rango solicitado; la proyección no. El cruce se produce al ampliar la ventana temporal o el volumen.
 
 El detalle técnico completo de los planes de ejecución y estadísticas de E/S se encuentra documentado en [docs/performance/optimizacion-consultas.md](docs/performance/optimizacion-consultas.md).
 

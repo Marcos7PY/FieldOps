@@ -22,7 +22,7 @@ public class KafkaProducerConfig {
     @Value("${spring.kafka.properties.schema.registry.url:http://localhost:8090}")
     private String schemaRegistryUrl;
 
-    @Value("${spring.kafka.producer.compression-type:none}")
+    @Value("${spring.kafka.producer.compression-type:snappy}")
     private String compressionType;
 
     @Bean

@@ -8,6 +8,8 @@ spring:
     bootstrap-servers: localhost:9092
     properties:
       schema.registry.url: mock://test-schema-registry
+    producer:
+      compression-type: none
 
 fieldops:
   outbox:

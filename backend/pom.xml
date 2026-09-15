@@ -21,7 +21,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <spring.boot.version>3.3.4</spring.boot.version>
+        <spring.boot.version>3.3.6</spring.boot.version>
         <avro.version>1.12.0</avro.version>
         <confluent.version>7.6.1</confluent.version>
         <shedlock.version>5.16.0</shedlock.version>
@@ -172,6 +172,9 @@
                 <version>10.0.4</version>
                 <configuration>
                     <failBuildOnCVSS>7</failBuildOnCVSS>
+                    <!-- OSS Index requiere credenciales para superar el limite de peticiones
+                         anonimas en CI. El analizador NVD sigue activo y es el que aplica
+                         failBuildOnCVSS. Reactivar cuando se configuren OSSINDEX_USER/TOKEN. -->
                     <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
                     <suppressionFiles>
                         <suppressionFile>${maven.multiModuleProjectDirectory}/owasp-suppressions.xml</suppressionFile>

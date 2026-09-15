@@ -31,6 +31,10 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
       schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8090}
+    producer:
+      # snappy requiere glibc; los Dockerfiles Alpine instalan gcompat para la libreria nativa.
+      # En entornos sin glibc, sobreescribir a 'none' o 'lz4' (lz4 es Java puro).
+      compression-type: ${KAFKA_COMPRESSION_TYPE:snappy}
 
 server:
   port: 8082
